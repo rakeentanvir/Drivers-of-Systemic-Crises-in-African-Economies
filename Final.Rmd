@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-Tasks:
+Completed Tasks:
 Install GitHub and GitHub Desktop App
 Share repo on GitHub to usernames: graydh, arslansaid
 
@@ -71,6 +71,10 @@ Alternative hypothesis: Not all regression coefficients equal 0. That is, the pr
 # Data collection and preparation
 
 ## Collect data
+
+```{r}
+df <- read_csv("african_crises.csv")
+```
 
 ### Optional: Scrape data off web HTML
 
