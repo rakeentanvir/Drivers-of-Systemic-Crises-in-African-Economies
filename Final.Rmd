@@ -28,10 +28,17 @@ Rakeen Tanvir
 • A brief description of the project and data collection (website, date type etc.)
 https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data 
 
+
 • Objectives and interests (what will be predicted)
 How debt affects crises? 
 Interaction/effects of economic variables?
 Difference in differences?
+Regression - robust, logistic, interaction
+At which annual rate of inflation does an Inflation Crisis become a practical certainty?
+
+Deeper dive into variables and data sources/definitions
+  Data collection
+  Data manipulation
 
 • Class material to be used for the analysis
 RMarkdown
@@ -45,8 +52,11 @@ Factors - country
 Model fitting/optimization - regression
 Functions of functions - helper functions, custom functions for regression
 Sampling - empirical data vs. theoretical distribution using chi-square goodness of fit tests, bootstrapping
-Monte Carlo - homework #2 
-Bootstrapping
+Monte Carlo - homework #2
+  Identify distribution for data
+  Investigate whether t-test is appropriate with power study
+  Determine confidence interval for variable of interest
+Bootstrapping - quantify uncertainty with confidence interval of point estimate
 
 • A description of the responsibilities of each of the group members.
 Web Scraping - Declan
