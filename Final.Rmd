@@ -69,36 +69,126 @@ Null hypothesis: All regression coefficients equal 0. That is, the predictors ca
 Alternative hypothesis: Not all regression coefficients equal 0. That is, the predictors can predict crises.
 
 
-# Data collection and preparation
+# Data collection, import, and preparation
 
 ## Collect data
+
+https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
+
+Sources
+
+Global Crises Dataset: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx
+
+Collection methodology
+
+The dataset is a derivative of Reinhart et al's Global Crises dataset. It was downloaded from: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx Non-African countries were filtered out from the dataset. And, variables containing notes or sparse data were removed. Years with no data were also filtered out.
+
+Context
+
+This dataset is a derivative of Reinhart et. al's Global Financial Stability dataset which can be found online at: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx
+
+The dataset will be valuable to those who seek to understand the dynamics of financial stability within the African context.
+
+Content
+
+The dataset specifically focuses on the Banking, Debt, Financial, Inflation and Systemic Crises that occurred, from 1860 to 2014, in 13 African countries, including: Algeria, Angola, Central African Republic, Ivory Coast, Egypt, Kenya, Mauritius, Morocco, Nigeria, South Africa, Tunisia, Zambia and Zimbabwe.
+
+Acknowledgements
+
+Reinhart, C., Rogoff, K., Trebesch, C. and Reinhart, V. (2019) Global Crises Data by Country.
+[online] https://www.hbs.edu/behavioral-finance-and-financial-stability/data. Available at: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx [Accessed: 17 July 2019].
+
+On this page we present data collected over many years by Carmen Reinhart (with her coauthors Ken Rogoff, Christoph Trebesch, and Vincent Reinhart). These include Banking Crisis dates for more than 70 countries from 1800-present, exchange rate crises, stock market crises, sovereign debt growth and default, and many other data series. 
+
+To see Carmen’s related research, please visit her website here:
+
+https://carmenreinhart.com/debt-and-debt-crises/
+
+https://carmenreinhart.com/wp-content/uploads/2020/02/229_data.pdf
+
+
+The BFFS Project keeps this data updated and available for download. Please email us with any questions.
+
+Inspiration
+
+My inspiration stems from two questions: "Which factors are most associated with Systemic Crises in Africa?" And; "At which annual rate of inflation does an Inflation Crisis become a practical certainty?"
+
+## Import and prepare tidy data with data transformation
 
 ```{r}
 african_crises <- read_csv("african_crises.csv", 
     col_types = cols(
-        case = col_integer(), 
-        cc3 = col_character(), 
-        country = col_character(), 
-        year = col_date(format = "%Y"), 
-        systemic_crisis = col_integer(), 
+        case = col_factor(ordered = TRUE), 
+        cc3 = col_factor(ordered = TRUE), 
+        country = col_factor(ordered = TRUE),
+        
+        year = col_date(format = "%Y"),
+        
         exch_usd = col_double(),
-        domestic_debt_in_default = col_integer(), 
-        sovereign_external_debt_default = col_integer(), 
         gdp_weighted_default = col_double(), 
         inflation_annual_cpi = col_double(),
+        
+        systemic_crisis = col_integer(), 
+        domestic_debt_in_default = col_integer(), 
+        sovereign_external_debt_default = col_integer(), 
         independence = col_integer(), 
         currency_crises = col_integer(), 
-        inflation_crises = col_integer(), 
-        banking_crisis = col_character()))
+        inflation_crises = col_integer(),
+        
+        banking_crisis = col_character()
+    )
+)
+
 View(african_crises)
+
+anyNA(african_crises) # FALSE
+
+ac <- mutate(african_crises, banking_crisis = as.integer(banking_crisis == "crisis"))
+
+str(ac)
+
+ac
+
 ```
+
+Among the variables in `ac` are:
+
+1. `case` <fctr>
+
+2. `cc3`  <fctr>
+
+3. `country` <fctr>
+
+4. `year` <date>
+
+5. `systemic_crisis` <int>
+
+6. `exch_usd` <dbl>
+
+7. `domestic_debt_in_default` <int>
+
+8. `sovereign_external_debt_default` <int>
+
+9. `gdp_weighted_default` <dbl>
+
+10. `inflation_annual_cpi` <dbl>
+
+11. `independence` <int>
+
+12. `currency_crises` <int>
+
+13. `inflation_crises` <int>
+
+14. `banking_crisis` <int>
+
 
 ### Optional: Scrape data off web HTML
 
+## 
 
 ## Preliminary checks on data quality
 
-## Diagnostics for relationshpis and strong interactions
+## Diagnostics for relationships and strong interactions
 
 ## Apply remedial measures, if needed
 
