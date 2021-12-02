@@ -1,7 +1,7 @@
 ---
-title: '535 Final Project'
-date: 'Due Date: December 1, 2021, 5:59pm'
-author: "Name: Rakeen Tanvir"
+title: 'STAT 535 Final Project - Fall 2021'
+date: 'Due Date: December 15, 2021, 5:59pm'
+author: "Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir"
 output: 
   html_document:
     toc: TRUE
@@ -11,6 +11,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(readr)
 ```
 
 Completed Tasks:
@@ -73,7 +74,23 @@ Alternative hypothesis: Not all regression coefficients equal 0. That is, the pr
 ## Collect data
 
 ```{r}
-df <- read_csv("african_crises.csv")
+african_crises <- read_csv("african_crises.csv", 
+    col_types = cols(
+        case = col_integer(), 
+        cc3 = col_character(), 
+        country = col_character(), 
+        year = col_date(format = "%Y"), 
+        systemic_crisis = col_integer(), 
+        exch_usd = col_double(),
+        domestic_debt_in_default = col_integer(), 
+        sovereign_external_debt_default = col_integer(), 
+        gdp_weighted_default = col_double(), 
+        inflation_annual_cpi = col_double(),
+        independence = col_integer(), 
+        currency_crises = col_integer(), 
+        inflation_crises = col_integer(), 
+        banking_crisis = col_character()))
+View(african_crises)
 ```
 
 ### Optional: Scrape data off web HTML
