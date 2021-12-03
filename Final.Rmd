@@ -129,7 +129,7 @@ My inspiration stems from two questions: "Which factors are most associated with
 ### Import and transform into tidy data
 
 ```{r}
-african_crises <- read_csv("african_crises.csv", 
+african_crises <- read_csv("reference/african_crises.csv", 
     col_types = cols(
         case = col_factor(ordered = TRUE), 
         cc3 = col_factor(ordered = TRUE), 
