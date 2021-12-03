@@ -129,11 +129,12 @@ My inspiration stems from two questions: "Which factors are most associated with
 ### Import and transform into tidy data
 
 ```{r}
-african_crises <- read_csv("african_crises.csv", 
+(ac <- 
+   read_csv("reference/african_crises.csv", 
     col_types = cols(
-        case = col_factor(ordered = TRUE), 
+        case = col_integer(), 
         cc3 = col_factor(ordered = TRUE), 
-        country = col_factor(ordered = TRUE),
+        country = col_character(),
         
         year = col_date(format = "%Y"),
         
@@ -141,32 +142,31 @@ african_crises <- read_csv("african_crises.csv",
         gdp_weighted_default = col_double(), 
         inflation_annual_cpi = col_double(),
         
-        systemic_crisis = col_integer(), 
-        domestic_debt_in_default = col_integer(), 
-        sovereign_external_debt_default = col_integer(), 
-        independence = col_integer(), 
+        systemic_crisis = col_logical(), 
+        domestic_debt_in_default = col_logical(), 
+        sovereign_external_debt_default = col_logical(), 
+        independence = col_logical(), 
         currency_crises = col_integer(), 
-        inflation_crises = col_integer(),
+        inflation_crises = col_logical(),
         
         banking_crisis = col_character()
     )
+  ) 
+  %>% mutate(banking_crisis = (banking_crisis == "crisis"))
+  %>% mutate(currency_crises = (currency_crises > 0)) # assume 2==1 in 4 cases
 )
 
-anyNA(african_crises) # FALSE
-
-ac <- mutate(african_crises, banking_crisis = as.integer(banking_crisis == "crisis"))
-
-str(ac)
-
-ac
-
+assertthat::noNA(ac)
+```
+```{r, include=FALSE}
+df = ac
 ```
 
 The data is tidy: Each variable has its own column, each observation has its own row, and each value has its own cell.
 
 ### The variables in `ac`
 
-1. `case` is a factor variable that indentifies the index for each country from the original, global dataset.  
+1. `case` is a factor variable that identifies the index for each country from the original, global dataset.  
 
 2. `cc3` is a factor variable that identifies each country with a three letter code.
 
@@ -174,7 +174,7 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 4. `year` is a date variable that identifies the year of the observation.
 
-5. `systemic_crisis` is an binary integer variable that identifies whether the observation is associated with a systemic crisis. 
+5. `systemic_crisis` <logical> that identifies whether the observation is associated with a systemic crisis. 
 
 6. `exch_usd` <dbl>
 
@@ -186,24 +186,24 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 10. `inflation_annual_cpi` <dbl>
 
-11. `independence` <int>
+11. `independence` <logical>
 
-12. `currency_crises` <int>
+12. `currency_crises` <logical>
 
-13. `inflation_crises` <int>
+13. `inflation_crises` <logical>
 
-14. `banking_crisis` <int>
+14. `banking_crisis` <logical>
 
 ### View the factor variables with plots and a tibble
 
 ```{r}
-plt <- ggplot(data = ac)
+plt <- ggplot(data = df)
 plt + geom_bar(mapping = aes(x = case))
 plt + geom_bar(mapping = aes(x = cc3))
 plt + geom_bar(mapping = aes(x = country)) +
   theme(axis.text.x=element_blank())
 
-(factors <- unique(ac[ , 1:3]) )
+(factors <- unique(df[ , 1:3]) )
 
 ```
 
@@ -213,7 +213,7 @@ plt + geom_bar(mapping = aes(x = country)) +
 plt + 
   geom_point(mapping = aes(x = year, y = independence, color = country))
 
-(indep_table <- ac %>% 
+(indep_table <- df %>% 
   filter(independence == 1) %>%  
   group_by(country) %>% 
   summarize(indep_year = min(year), count = n() ) %>% 
@@ -247,6 +247,7 @@ What split decision rule should we follow?
 
 
 ### Optional: Scrape data off web HTML
+latitude, longitude, almanac/climate
 
 
 ## Preliminary checks on data quality
