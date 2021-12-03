@@ -1,17 +1,20 @@
 ---
-title: 'STAT 535 Final Project - Fall 2021'
+title: "STAT 535 Final Project - Fall 2021"
+author: 'Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir'
 date: 'Due Date: December 15, 2021, 5:59pm'
-author: "Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir"
-output: 
+output:
   html_document:
-    toc: TRUE
-    number_sections: TRUE
+    toc: yes
+    number_sections: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readr)
+library(modelr)
 ```
 
 Completed Tasks:
@@ -69,9 +72,17 @@ Null hypothesis: All regression coefficients equal 0. That is, the predictors ca
 Alternative hypothesis: Not all regression coefficients equal 0. That is, the predictors can predict crises.
 
 
-# Data collection, import, and preparation
+# Data collection and preparation
 
-## Collect data
+## Data collection
+
+### What type of observational study are we conducting? 
+
+Confirmatory - confirm or not confirm hypothesis derived from previous studies or hunches
+
+Exploratory - search for explanatory variables that might be related to the response variable
+
+If confirmatory, which explanatory variables are primary variables (involved in the hypothesis), amd which are control variables (included to reflect existing knowledge by accounting for known influences on the response variable)?
 
 https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
@@ -113,7 +124,9 @@ Inspiration
 
 My inspiration stems from two questions: "Which factors are most associated with Systemic Crises in Africa?" And; "At which annual rate of inflation does an Inflation Crisis become a practical certainty?"
 
-## Import and prepare tidy data with data transformation
+## Data preparation
+
+### Import and transform into tidy data
 
 ```{r}
 african_crises <- read_csv("african_crises.csv", 
@@ -139,8 +152,6 @@ african_crises <- read_csv("african_crises.csv",
     )
 )
 
-View(african_crises)
-
 anyNA(african_crises) # FALSE
 
 ac <- mutate(african_crises, banking_crisis = as.integer(banking_crisis == "crisis"))
@@ -151,17 +162,19 @@ ac
 
 ```
 
-Among the variables in `ac` are:
+The data is tidy: Each variable has its own column, each observation has its own row, and each value has its own cell.
 
-1. `case` <fctr>
+### The variables in `ac`
 
-2. `cc3`  <fctr>
+1. `case` is a factor variable that indentifies the index for each country from the original, global dataset.  
 
-3. `country` <fctr>
+2. `cc3` is a factor variable that identifies each country with a three letter code.
 
-4. `year` <date>
+3. `country` is a factor variable that names each country.
 
-5. `systemic_crisis` <int>
+4. `year` is a date variable that identifies the year of the observation.
+
+5. `systemic_crisis` is an binary integer variable that identifies whether the observation is associated with a systemic crisis. 
 
 6. `exch_usd` <dbl>
 
@@ -181,19 +194,75 @@ Among the variables in `ac` are:
 
 14. `banking_crisis` <int>
 
+### View the factor variables with plots and a tibble
+
+```{r}
+plt <- ggplot(data = ac)
+plt + geom_bar(mapping = aes(x = case))
+plt + geom_bar(mapping = aes(x = cc3))
+plt + geom_bar(mapping = aes(x = country)) +
+  theme(axis.text.x=element_blank())
+
+(factors <- unique(ac[ , 1:3]) )
+
+```
+
+### Focus on years following independence. 
+
+```{r}
+plt + 
+  geom_point(mapping = aes(x = year, y = independence, color = country))
+
+(indep_table <- ac %>% 
+  filter(independence == 1) %>%  
+  group_by(country) %>% 
+  summarize(indep_year = min(year), count = n() ) %>% 
+  arrange(indep_year) %>% 
+  mutate(prop = count/sum(count))
+)
+
+
+
+
+```
+
+Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
+
+
+### Split the data into three pieces
+
+~60% of the data goes into a training (or exploration) set
+
+~20% goes into a query set used to compare models by hand
+
+~20% is held back for a test set to test the final model
+
+What split decision rule should we follow?
+
+1. Split by country.
+
+2. Randomly select observations from the four highlighted countries to split among the query and test sets. 
+
+3. Randomly select observations from the entire data set to split among the training, query, and test sets. 
+
 
 ### Optional: Scrape data off web HTML
 
-## 
 
 ## Preliminary checks on data quality
 
-## Diagnostics for relationships and strong interactions
+### Edit checks and plots to identify gross data errors and extreme outliers
 
-## Apply remedial measures, if needed
+## Preliminary model investigation
+
+### Diagnostics for relationships and strong interactions
+
+### Apply remedial measures, if needed
 
 
 # Reduction of number of explanatory variables (for exploratory observational studies)
+
+Not required for confirmatory observational studies. 
 
 ## Determine several potentially useful subsets of explanatory variables; include known essential variables
 
@@ -202,4 +271,15 @@ Among the variables in `ac` are:
 
 ## Investigate curvature and interaction effects more fully
 
+## Study residuals and other diagnostics
+
+## Apply remedial measures, if needed
+
+## Select tentative model
+
+
 # Model validation - 2-3 data sets
+
+## Validity checks
+
+## Final regression model
