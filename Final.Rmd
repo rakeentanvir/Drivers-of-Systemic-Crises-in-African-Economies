@@ -34,15 +34,21 @@ https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
 
 • Objectives and interests (what will be predicted)
-How debt affects crises? 
-Interaction/effects of economic variables?
-Difference in differences?
-Regression - robust, logistic, interaction
-At which annual rate of inflation does an Inflation Crisis become a practical certainty?
+
+Exploratory observational study
+Which  systemic crises? 
+
+
 
 Deeper dive into variables and data sources/definitions
   Data collection
   Data manipulation
+  
+Investigate...
+Difference in differences?
+Interaction/effects of economic variables?
+Regression - robust, logistic, interaction
+At which annual rate of inflation does an Inflation Crisis become a practical certainty?
 
 • Class material to be used for the analysis
 RMarkdown
@@ -60,7 +66,7 @@ Monte Carlo - homework #2
   Identify distribution for data
   Investigate whether t-test is appropriate with power study
   Determine confidence interval for variable of interest
-Bootstrapping - quantify uncertainty with confidence interval of point estimate
+Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
 
 • A description of the responsibilities of each of the group members.
 Web Scraping - Declan
@@ -83,6 +89,9 @@ Confirmatory - confirm or not confirm hypothesis derived from previous studies o
 Exploratory - search for explanatory variables that might be related to the response variable
 
 If confirmatory, which explanatory variables are primary variables (involved in the hypothesis), amd which are control variables (included to reflect existing knowledge by accounting for known influences on the response variable)?
+
+
+
 
 https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
@@ -233,9 +242,9 @@ Most countries achieved independence by 1965. The four exceptions are Algeria (1
 
 ~60% of the data goes into a training (or exploration) set
 
-~20% goes into a query set used to compare models by hand
+~20% goes into a test set used to compare models by hand
 
-~20% is held back for a test set to test the final model
+~20% is held back for a validation set to test the final model
 
 What split decision rule should we follow?
 
