@@ -256,6 +256,45 @@ latitude, longitude, almanac/climate
 
 ## Preliminary model investigation
 
+### Simple Logistic Regression Model
+
+```{r}
+likelihood <- function(B0, B1, X) {
+  return ( ( 1 + exp( -B0 - B1*X) )^(-1) )
+}
+```
+
+```{r}
+log_likelihood <- function(B0, B1, X, Y) {
+  return ( sum( Y * log( likelihood(B0, B1, X) )  + ( length(Y) - sum(Y) ) * log( 1 - likelihood(B0, B1, X) ) ) )
+}
+```
+
+```{r}
+ll_data <- function(B0, B1) {
+  return( log_likelihood(B0, B1, X = X, Y = Y) )
+}
+```
+
+```{r}
+ll_helper <- function(params) {
+  return ( -ll_data(params[1], params[2]) )
+}
+```
+
+Generate test data:
+
+```{r}
+n <- 1e4
+Y <- rep( rbernoulli(n, p = .1) )
+X <- Y + .1
+
+params <- c(.5, .5)
+
+(best <- optim(par = params, fn = ll_helper, method = "L-BFGS-B") )
+```
+
+
 ### Diagnostics for relationships and strong interactions
 
 ### Apply remedial measures, if needed
