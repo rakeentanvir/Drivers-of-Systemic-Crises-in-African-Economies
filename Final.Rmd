@@ -17,40 +17,54 @@ library(readr)
 library(modelr)
 ```
 
-Completed Tasks:
+# Completed Tasks:
+
 Install GitHub and GitHub Desktop App
+
 Share repo on GitHub to usernames: graydh, arslansaid
 
-Abstract:
+# Abstract:
+
 Predictive Model of Systemic Crises in Africa
 
 • Full names of group members
+
 Said Arslan
 Declan Gray-Mullen
 Rakeen Tanvir
 
 • A brief description of the project and data collection (website, date type etc.)
-https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data 
+
+https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
 
-• Objectives and interests (what will be predicted)
+• Objectives and interests
 
-Exploratory observational study
-Which  systemic crises? 
+This is an exploratory observational study of how economic conditions have evolved in African countries since they gained independence. The study will:
 
+(a) Summarize the key trends for GDP, inflation, exchange rate, and crises. 
 
+(b) Identify which countries have experienced the biggest economic changes. 
+
+(c) Determine what factors are driving these patterns and what evidence could be assembled to test these hypotheses with further investigation.
+
+  
+# Investigate...
 
 Deeper dive into variables and data sources/definitions
   Data collection
   Data manipulation
   
-Investigate...
 Difference in differences?
+
 Interaction/effects of economic variables?
+
 Regression - robust, logistic, interaction
+
 At which annual rate of inflation does an Inflation Crisis become a practical certainty?
 
 • Class material to be used for the analysis
+
 RMarkdown
 Data Types - lists, data frames, tibbles 
 Flow Control - if, else, while, repeat
@@ -69,12 +83,15 @@ Monte Carlo - homework #2
 Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
 
 • A description of the responsibilities of each of the group members.
+
 Web Scraping - Declan
 Econometrics - Said
 GitHub & Rmd - Rakeen
 
 • Conclusion (If you don’t have the conclusion yet, please just present it on the presentation day.)
+
 Null hypothesis: All regression coefficients equal 0. That is, the predictors cannot predict crises.
+
 Alternative hypothesis: Not all regression coefficients equal 0. That is, the predictors can predict crises.
 
 
@@ -88,14 +105,16 @@ Confirmatory - confirm or not confirm hypothesis derived from previous studies o
 
 Exploratory - search for explanatory variables that might be related to the response variable
 
-If confirmatory, which explanatory variables are primary variables (involved in the hypothesis), amd which are control variables (included to reflect existing knowledge by accounting for known influences on the response variable)?
+If confirmatory, which explanatory variables are:
 
+Primary variables - involved in the hypothesis
 
+Control variables - included to reflect existing knowledge by accounting for known influences on the response variable
 
-
-https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
 Sources
+
+https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
 
 Global Crises Dataset: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx
 
@@ -289,8 +308,16 @@ latitude, longitude, almanac/climate
 ### Simple Logistic Regression Model
 
 ```{r}
+ac_matrix <- as.matrix(ac[5:ncol(ac)])
+Y <- ac_matrix[ , "systemic_crisis"]
+X <- cbind( rep(1, nrow(ac_matrix)), ac_matrix[ , 2:ncol(ac_matrix)] )
+
+```
+
+
+```{r}
 likelihood <- function(B0, B1, X) {
-  return ( ( 1 + exp( -B0 - B1*X) )^(-1) )
+  return ( ( 1 + exp( -t(X) )^(-1) ) )
 }
 ```
 
