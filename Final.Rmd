@@ -237,6 +237,21 @@ plt +
 
 Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
 
+```{r}
+plt + 
+  geom_point(mapping = aes(x = year, y = systemic_crisis, color = country))
+
+(sys_crisis_table <- df %>% 
+  filter(systemic_crisis == 1) %>%  
+  group_by(country) %>% 
+  summarize(earliest_sys_crisis = min(year), count = n() ) %>% 
+  arrange(earliest_sys_crisis) %>% 
+  mutate(prop = count/sum(count))
+)
+```
+
+Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
+
 
 ### Split the data into three pieces
 
@@ -253,6 +268,12 @@ What split decision rule should we follow?
 2. Randomly select observations from the four highlighted countries to split among the query and test sets. 
 
 3. Randomly select observations from the entire data set to split among the training, query, and test sets. 
+
+Because we are working with time series data, let's maintain continuity over time and split the data by country.
+
+```{r}
+train_df <- 
+```
 
 
 ### Optional: Scrape data off web HTML
