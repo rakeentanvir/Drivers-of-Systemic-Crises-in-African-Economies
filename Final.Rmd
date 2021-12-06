@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readr)
 library(modelr)
+library(countrycode)
 ```
 
 # Completed Tasks:
@@ -291,13 +292,118 @@ What split decision rule should we follow?
 Because we are working with time series data, let's maintain continuity over time and split the data by country.
 
 ```{r}
-train_df <- 
+train_df <- NA
 ```
 
 
-### Optional: Scrape data off web HTML
-latitude, longitude, almanac/climate
+### Web Scraping: Commodity Import & Export Price Index
 
+From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)
+```{r}
+(ac_imf = ac %>% filter(year>1965, independence=TRUE))
+```
+In order to expand the features of our dataset, we scrape additional data provided by the International Monetary Fund (IMF). While the IMF provides many formats including API REST endpoints, excel and csv file formats but we instead scrape the rendered html using their [online table viewer](https://data.imf.org/?sk=2CDDCCB8-0B59-43E9-B6A0-59210D5605D2&sId=1390030341854).
+
+Using the tool we selected the data desired and used inspect element to view the html source for the current page view. We then copied the div representing the entire table in html and pasted the text into local files.
+
+```{r}
+imf_html_to_df = function (html_filename){
+  filename_pieces = str_split(html_filename, "_")[[1]]
+  
+  html_str = readLines(html_filename)
+  html_to_byRowList = function(full_file_str){
+    regex_exp = "<div class=\"PPTSCellConText.*?>(.*?)<"
+    result = stringr::str_match_all(full_file_str, regex_exp)
+    return(result)
+  }
+  
+  # by row vector of all elements in our df
+  elements = html_to_byRowList(html_str)[[1]][, 2] 
+  
+  # df 'schema' defined
+  columns = c("country", seq(as.integer(filename_pieces[3]), as.integer(filename_pieces[4]), by=1))
+  num_columns = length(columns)
+  schema = matrix(ncol = num_columns, nrow = 0)
+  df = data.frame(schema)
+  colnames(df) = columns
+  
+  elements = elements[num_columns:length(elements)] # first elements are columns year labels (missing 'country')
+  
+  # populate df iterating through elements
+  start = 1
+  while(start + num_columns - 1 <= length(elements)){
+    curr = elements[start:(start+num_columns-1)]
+    curr = do.call(c, list(list(curr[1]), as.double(curr[2:(length(curr))])))
+    df[nrow(df) + 1,] = curr
+    start = start + num_columns
+  }
+  df$cc3 = as_factor(countrycode(df$country, origin = 'country.name', destination = 'iso3c')) 
+  return(df)
+}
+
+export_df_1 = imf_html_to_df("reference/IMF_export_1965_1988_.html")
+```
+```{r, include=FALSE}
+export_df_2 = imf_html_to_df("reference/IMF_export_1989_2014_.html")
+export_df_3 = imf_html_to_df("reference/IMF_export_2015_2020_.html")
+```
+```{r}
+export_df = merge(x=merge(x=export_df_1, y=export_df_2, by=c("cc3", "country")), y=export_df_3, by=c("cc3", "country"))
+export_df = export_df %>% arrange(cc3)
+as_tibble(export_df)
+```
+
+Transform the IMF  into a 'join compatable' data frame.
+```{r}
+imf_df_transform = function(df, col_name){
+  just_cpi_df = subset(df, select = -c(cc3, country))
+  cpi = unlist(just_cpi_df, use.names=FALSE)
+  cc3 = unlist(subset(df, select = c(cc3)), use.names=FALSE)
+  country = unlist(subset(df, select = c(country)), use.names=FALSE)
+  year = colnames(just_cpi_df)
+  row_repeats = length(cpi) / length(cc3)
+  col_repeats = length(cpi) / length(year)
+  as.date=function(x){
+    year_starts = paste(as.character(x), rep("01", length(x)), rep("01", length(x)), sep="-" )
+    return(as.Date(year_starts, format="%Y-%m-%d"))
+  }
+  df_joinable = data.frame(country=rep(country, times=row_repeats), cc3=rep(cc3, times=row_repeats), year=rep(as.date(year), each=col_repeats))
+  df_joinable[col_name] = cpi
+  return(df_joinable)
+}
+export_df_joinable = imf_df_transform(export_df, "inflation_annual_epi")
+```
+Lastly, we inner join the two tables!
+```{r}
+ac_imf = inner_join(ac_imf, export_df_joinable, by = c("country", "cc3", "year"))
+```
+
+
+We then repeat the whole process to process webpages containing import price data
+```{r}
+import_df_1 = imf_html_to_df("reference/IMF_import_1965_1990_.html")
+```
+```{r, include=FALSE}
+import_df_2 = imf_html_to_df("reference/IMF_import_1991_2016_.html")
+import_df_3 = imf_html_to_df("reference/IMF_import_2017_2020_.html")
+```
+```{r}
+import_df = merge(x=merge(x=import_df_1, y=import_df_2, by=c("cc3", "country")), y=import_df_3, by=c("cc3", "country"))
+import_df = import_df %>% arrange(cc3)
+as_tibble(import_df)
+
+import_df_joinable = imf_df_transform(import_df, "inflation_annual_ipi")
+
+# dont run this more than once 
+ac_imf = inner_join(ac_imf, import_df_joinable, by = c("country", "cc3", "year"))
+
+as_tibble(ac_imf %>% select(country, year, inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi))
+```
+
+other ideas: rainfall, almanac/climate date
+
+### Transform Index to Percentage Change
+TODO: declan will write dplyr code to transform our inflation_annual_* columns to pct_change_* representing the percent change in the index from the previous year to the current (a double between 0. and 1.0)
 
 ## Preliminary checks on data quality
 
@@ -348,7 +454,7 @@ X <- Y + .1
 
 params <- c(.5, .5)
 
-(best <- optim(par = params, fn = ll_helper, method = "L-BFGS-B") )
+# (best <- optim(par = params, fn = ll_helper, method = "L-BFGS-B") )
 ```
 
 
