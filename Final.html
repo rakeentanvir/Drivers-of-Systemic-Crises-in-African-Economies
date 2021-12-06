@@ -189,7 +189,7 @@ pre code {
 <li><a href="#focus-on-years-following-independence."><span class="toc-section-number">4.2.4</span> Focus on years following independence.</a></li>
 <li><a href="#split-the-data-into-three-pieces"><span class="toc-section-number">4.2.5</span> Split the data into three pieces</a></li>
 <li><a href="#web-scraping-commodity-import-export-price-index"><span class="toc-section-number">4.2.6</span> Web Scraping: Commodity Import &amp; Export Price Index</a></li>
-<li><a href="#transform-index-to-percentage-change"><span class="toc-section-number">4.2.7</span> Transform Index to Percentage Change</a></li>
+<li><a href="#transform-index-annual-to-index-percentage-change"><span class="toc-section-number">4.2.7</span> Transform Index Annual to Index Percentage Change</a></li>
 </ul></li>
 <li><a href="#preliminary-checks-on-data-quality"><span class="toc-section-number">4.3</span> Preliminary checks on data quality</a>
 <ul>
@@ -457,24 +457,7 @@ plt + geom_bar(mapping = aes(x = case))</code></pre>
 <div id="web-scraping-commodity-import-export-price-index" class="section level3" number="4.2.6">
 <h3 number="4.2.6"><span class="header-section-number">4.2.6</span> Web Scraping: Commodity Import &amp; Export Price Index</h3>
 <p>From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)</p>
-<pre class="r"><code>(ac_imf = ac %&gt;% filter(year&gt;1965, independence=TRUE))</code></pre>
-<pre><code>## # A tibble: 494 × 14
-##     case cc3   country year       systemic_crisis exch_usd domestic_debt_in_def…
-##    &lt;int&gt; &lt;fct&gt; &lt;chr&gt;   &lt;date&gt;     &lt;lgl&gt;              &lt;dbl&gt; &lt;lgl&gt;                
-##  1     1 DZA   Algeria 1976-01-01 FALSE               4.36 FALSE                
-##  2     1 DZA   Algeria 1977-01-01 FALSE               4.04 FALSE                
-##  3     1 DZA   Algeria 1978-01-01 FALSE               3.83 FALSE                
-##  4     1 DZA   Algeria 1979-01-01 FALSE               3.76 FALSE                
-##  5     1 DZA   Algeria 1980-01-01 FALSE               3.97 FALSE                
-##  6     1 DZA   Algeria 1981-01-01 FALSE               4.38 FALSE                
-##  7     1 DZA   Algeria 1982-01-01 FALSE               4.64 FALSE                
-##  8     1 DZA   Algeria 1983-01-01 FALSE               4.92 FALSE                
-##  9     1 DZA   Algeria 1984-01-01 FALSE               5.12 FALSE                
-## 10     1 DZA   Algeria 1985-01-01 FALSE               4.77 FALSE                
-## # … with 484 more rows, and 7 more variables:
-## #   sovereign_external_debt_default &lt;lgl&gt;, gdp_weighted_default &lt;dbl&gt;,
-## #   inflation_annual_cpi &lt;dbl&gt;, independence &lt;lgl&gt;, currency_crises &lt;lgl&gt;,
-## #   inflation_crises &lt;lgl&gt;, banking_crisis &lt;lgl&gt;</code></pre>
+<pre class="r"><code>ac_imf = ac</code></pre>
 <p>In order to expand the features of our dataset, we scrape additional data provided by the International Monetary Fund (IMF). While the IMF provides many formats including API REST endpoints, excel and csv file formats but we instead scrape the rendered html using their <a href="https://data.imf.org/?sk=2CDDCCB8-0B59-43E9-B6A0-59210D5605D2&amp;sId=1390030341854">online table viewer</a>.</p>
 <p>Using the tool we selected the data desired and used inspect element to view the html source for the current page view. We then copied the div representing the entire table in html and pasted the text into local files.</p>
 <pre class="r"><code>imf_html_to_df = function (html_filename){
@@ -596,25 +579,47 @@ as_tibble(import_df)</code></pre>
 ac_imf = inner_join(ac_imf, import_df_joinable, by = c(&quot;country&quot;, &quot;cc3&quot;, &quot;year&quot;))
 
 as_tibble(ac_imf %&gt;% select(country, year, inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi))</code></pre>
-<pre><code>## # A tibble: 455 × 5
+<pre><code>## # A tibble: 579 × 5
 ##    country year       inflation_annual_cpi inflation_annual_epi inflation_annua…
 ##    &lt;chr&gt;   &lt;date&gt;                    &lt;dbl&gt;                &lt;dbl&gt;            &lt;dbl&gt;
-##  1 Algeria 1976-01-01                17.2                  73.7            100. 
-##  2 Algeria 1977-01-01                11.5                  76.0             99.9
-##  3 Algeria 1978-01-01                 9.67                 75.3             99.7
-##  4 Algeria 1979-01-01                14.6                  85.4            100. 
-##  5 Algeria 1980-01-01                 9.67                 87.8            100. 
-##  6 Algeria 1981-01-01                14.6                  87.3             99.4
-##  7 Algeria 1982-01-01                 6.59                 87.6             99.0
-##  8 Algeria 1983-01-01                 7.84                 86.1             99.1
-##  9 Algeria 1984-01-01                 6.31                 85.2             98.8
-## 10 Algeria 1985-01-01                10.4                  84.6             98.4
-## # … with 445 more rows</code></pre>
+##  1 Algeria 1968-01-01                 6.60                 59.1             99.4
+##  2 Algeria 1969-01-01                 2.63                 58.9             99.5
+##  3 Algeria 1970-01-01                 3.66                 58.1             99.5
+##  4 Algeria 1971-01-01                 6.17                 58.6             99.2
+##  5 Algeria 1972-01-01                 4.73                 58.6             99.4
+##  6 Algeria 1973-01-01                 8.96                 58.9            101. 
+##  7 Algeria 1974-01-01                 8.88                 73.3            102. 
+##  8 Algeria 1975-01-01                12.1                  71.7            100. 
+##  9 Algeria 1976-01-01                17.2                  73.7            100. 
+## 10 Algeria 1977-01-01                11.5                  76.0             99.9
+## # … with 569 more rows</code></pre>
 <p>other ideas: rainfall, almanac/climate date</p>
 </div>
-<div id="transform-index-to-percentage-change" class="section level3" number="4.2.7">
-<h3 number="4.2.7"><span class="header-section-number">4.2.7</span> Transform Index to Percentage Change</h3>
-<p>TODO: declan will write dplyr code to transform our inflation_annual_* columns to pct_change_* representing the percent change in the index from the previous year to the current (a double between 0. and 1.0)</p>
+<div id="transform-index-annual-to-index-percentage-change" class="section level3" number="4.2.7">
+<h3 number="4.2.7"><span class="header-section-number">4.2.7</span> Transform Index Annual to Index Percentage Change</h3>
+<pre class="r"><code>ac_imf = ac_imf %&gt;% group_by(cc3) %&gt;% arrange(year) %&gt;% 
+  mutate(inflation_change_cpi=(inflation_annual_cpi-lag(inflation_annual_cpi))/lag(inflation_annual_cpi)*100) %&gt;%
+  mutate(inflation_change_epi=(inflation_annual_epi-lag(inflation_annual_epi))/lag(inflation_annual_epi)*100) %&gt;%
+  mutate(inflation_change_ipi=(inflation_annual_ipi-lag(inflation_annual_ipi))/lag(inflation_annual_ipi)*100) %&gt;% ungroup()
+
+ac_imf = ac_imf %&gt;% filter(!is.na(inflation_change_cpi))
+
+as_tibble(ac_imf %&gt;% arrange(cc3, year) %&gt;% select(cc3, year, inflation_annual_cpi, inflation_change_cpi, inflation_annual_epi, inflation_change_epi, inflation_annual_ipi, inflation_change_ipi))</code></pre>
+<pre><code>## # A tibble: 567 × 8
+##    cc3   year       inflation_annual_cpi inflation_change_cpi inflation_annual_…
+##    &lt;fct&gt; &lt;date&gt;                    &lt;dbl&gt;                &lt;dbl&gt;              &lt;dbl&gt;
+##  1 DZA   1969-01-01                 2.63              -60.2                 58.9
+##  2 DZA   1970-01-01                 3.66               39.2                 58.1
+##  3 DZA   1971-01-01                 6.17               68.8                 58.6
+##  4 DZA   1972-01-01                 4.73              -23.3                 58.6
+##  5 DZA   1973-01-01                 8.96               89.3                 58.9
+##  6 DZA   1974-01-01                 8.88               -0.915               73.3
+##  7 DZA   1975-01-01                12.1                36.3                 71.7
+##  8 DZA   1976-01-01                17.2                41.9                 73.7
+##  9 DZA   1977-01-01                11.5               -33.3                 76.0
+## 10 DZA   1978-01-01                 9.67              -15.6                 75.3
+## # … with 557 more rows, and 3 more variables: inflation_change_epi &lt;dbl&gt;,
+## #   inflation_annual_ipi &lt;dbl&gt;, inflation_change_ipi &lt;dbl&gt;</code></pre>
 </div>
 </div>
 <div id="preliminary-checks-on-data-quality" class="section level2" number="4.3">

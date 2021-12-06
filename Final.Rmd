@@ -300,7 +300,7 @@ train_df <- NA
 
 From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)
 ```{r}
-(ac_imf = ac %>% filter(year>1965, independence=TRUE))
+ac_imf = ac
 ```
 In order to expand the features of our dataset, we scrape additional data provided by the International Monetary Fund (IMF). While the IMF provides many formats including API REST endpoints, excel and csv file formats but we instead scrape the rendered html using their [online table viewer](https://data.imf.org/?sk=2CDDCCB8-0B59-43E9-B6A0-59210D5605D2&sId=1390030341854).
 
@@ -402,8 +402,17 @@ as_tibble(ac_imf %>% select(country, year, inflation_annual_cpi, inflation_annua
 
 other ideas: rainfall, almanac/climate date
 
-### Transform Index to Percentage Change
-TODO: declan will write dplyr code to transform our inflation_annual_* columns to pct_change_* representing the percent change in the index from the previous year to the current (a double between 0. and 1.0)
+### Transform Index Annual to Index Percentage Change
+```{r}
+ac_imf = ac_imf %>% group_by(cc3) %>% arrange(year) %>% 
+  mutate(inflation_change_cpi=(inflation_annual_cpi-lag(inflation_annual_cpi))/lag(inflation_annual_cpi)*100) %>%
+  mutate(inflation_change_epi=(inflation_annual_epi-lag(inflation_annual_epi))/lag(inflation_annual_epi)*100) %>%
+  mutate(inflation_change_ipi=(inflation_annual_ipi-lag(inflation_annual_ipi))/lag(inflation_annual_ipi)*100) %>% ungroup()
+
+ac_imf = ac_imf %>% filter(!is.na(inflation_change_cpi))
+
+as_tibble(ac_imf %>% arrange(cc3, year) %>% select(cc3, year, inflation_annual_cpi, inflation_change_cpi, inflation_annual_epi, inflation_change_epi, inflation_annual_ipi, inflation_change_ipi))
+```
 
 ## Preliminary checks on data quality
 
