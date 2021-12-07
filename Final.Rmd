@@ -467,6 +467,34 @@ params <- c(.5, .5)
 ```
 
 
+```{r}
+# some percents are Inf, can't perform regression
+assertthat::assert_that(all(is.finite(ac_imf$inflation_change_cpi)))
+ac_imf %>% filter(inflation_change_cpi==Inf)
+
+# but we can perform logistic regression on the annual values
+ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
+glm.fit = glm(formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi, family = binomial, data = ac_imf)
+
+glm.probs <- predict(glm.fit, newdata = ac_imf, type = "response")
+
+glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
+
+lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
+
+paste("Training Accuracy", mean(lr_got_it_right))
+paste("Correctly predicted",
+  sum(glm.pred & lr_got_it_right),
+  "of",
+  sum(as.logical(ac_imf$banking_crisis)),
+  "crises"
+)
+paste("False positives",
+  sum(glm.pred & !(lr_got_it_right))
+)
+```
+
+
 ### Diagnostics for relationships and strong interactions
 
 ### Apply remedial measures, if needed
