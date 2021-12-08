@@ -1,3 +1,7 @@
+
+*.log
+*.tex
+
 .Rproj.user
 .RProj
 .Rhistory
