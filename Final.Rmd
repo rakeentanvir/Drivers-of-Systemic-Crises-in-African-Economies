@@ -24,38 +24,14 @@ Install GitHub and GitHub Desktop App
 
 Share repo on GitHub to usernames: graydh, arslansaid
 
-# Abstract:
+# To do
 
-Predictive Model of Systemic Crises in Africa
-
-• Full names of group members
-
-Said Arslan
-Declan Gray-Mullen
-Rakeen Tanvir
-
-• A brief description of the project and data collection (website, date type etc.)
-
-https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
-
-
-• Objectives and interests
-
-This is an exploratory observational study of how economic conditions have evolved in African countries since they gained independence. The study will:
-
-(a) Summarize the key trends for GDP, inflation, exchange rate, and crises. 
-
-(b) Identify which countries have experienced the biggest economic changes. 
-
-(c) Determine what factors are driving these patterns and what evidence could be assembled to test these hypotheses with further investigation.
-
-  
-# Investigate...
-
-Deeper dive into variables and data sources/definitions
-  Data collection
-  Data manipulation
-  
+Sampling - empirical data vs. theoretical distribution using chi-square goodness of fit tests, bootstrapping
+Monte Carlo - homework #2
+  Identify distribution for data
+  Investigate whether t-test is appropriate with power study
+  Determine confidence interval for variable of interest
+Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
 Difference in differences?
 
 Interaction/effects of economic variables?
@@ -63,38 +39,6 @@ Interaction/effects of economic variables?
 Regression - robust, logistic, interaction
 
 At which annual rate of inflation does an Inflation Crisis become a practical certainty?
-
-• Class material to be used for the analysis
-
-RMarkdown
-Data Types - lists, data frames, tibbles 
-Flow Control - if, else, while, repeat
-Strings & Regular Expression - character (country code, country)
-  Web scraping - aggregate data on African countries
-Data Transformations (dplyr & SQL)
-Visualization (ggplot) - regression, inflation CPI vs. year, country, etc. 
-Factors - country
-Model fitting/optimization - regression
-Functions of functions - helper functions, custom functions for regression
-Sampling - empirical data vs. theoretical distribution using chi-square goodness of fit tests, bootstrapping
-Monte Carlo - homework #2
-  Identify distribution for data
-  Investigate whether t-test is appropriate with power study
-  Determine confidence interval for variable of interest
-Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
-
-• A description of the responsibilities of each of the group members.
-
-Web Scraping - Declan
-Econometrics - Said
-GitHub & Rmd - Rakeen
-
-• Conclusion (If you don’t have the conclusion yet, please just present it on the presentation day.)
-
-Null hypothesis: All regression coefficients equal 0. That is, the predictors cannot predict crises.
-
-Alternative hypothesis: Not all regression coefficients equal 0. That is, the predictors can predict crises.
-
 
 # Data collection and preparation
 
@@ -111,27 +55,6 @@ If confirmatory, which explanatory variables are:
 Primary variables - involved in the hypothesis
 
 Control variables - included to reflect existing knowledge by accounting for known influences on the response variable
-
-
-Sources
-
-https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data
-
-Global Crises Dataset: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx
-
-Collection methodology
-
-The dataset is a derivative of Reinhart et al's Global Crises dataset. It was downloaded from: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx Non-African countries were filtered out from the dataset. And, variables containing notes or sparse data were removed. Years with no data were also filtered out.
-
-Context
-
-This dataset is a derivative of Reinhart et. al's Global Financial Stability dataset which can be found online at: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx
-
-The dataset will be valuable to those who seek to understand the dynamics of financial stability within the African context.
-
-Content
-
-The dataset specifically focuses on the Banking, Debt, Financial, Inflation and Systemic Crises that occurred, from 1860 to 2014, in 13 African countries, including: Algeria, Angola, Central African Republic, Ivory Coast, Egypt, Kenya, Mauritius, Morocco, Nigeria, South Africa, Tunisia, Zambia and Zimbabwe.
 
 Acknowledgements
 
@@ -189,7 +112,11 @@ assertthat::noNA(ac)
 ```
 ```{r, include=FALSE}
 df = ac
+
+df_test <- filter(df, (systemic_crisis == FALSE) && (banking_crisis == TRUE))
 ```
+
+Bootstrap confidence interval for regression coefficients (HW10)
 
 The data is tidy: Each variable has its own column, each observation has its own row, and each value has its own cell.
 
@@ -223,6 +150,8 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 14. `banking_crisis` <logical>
 
+How are the different crises related? Heat map, refine question. Reverse engineering to identify motivation for compiling the data set. Investigate relevant research and economic definitions. 
+
 ### View the factor variables with plots and a tibble
 
 ```{r}
@@ -250,7 +179,7 @@ plt +
   mutate(prop = count/sum(count))
 )
 
-
+# Add date of independence
 
 
 ```
@@ -260,6 +189,10 @@ Most countries achieved independence by 1965. The four exceptions are Algeria (1
 ```{r}
 plt + 
   geom_point(mapping = aes(x = year, y = systemic_crisis, color = country))
+
+# Jitter or predetermined distances
+# TRUE values only
+# ideological basis
 
 (sys_crisis_table <- df %>% 
   filter(systemic_crisis == 1) %>%  
@@ -271,6 +204,14 @@ plt +
 ```
 
 Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
+
+Combine independence and systemic crises into one plot. Identify marker for ind per country on its own line and then its systemic crises. Is systemic crisis associated with xxx? Demonstrate simple relationships with scatter plots and regression. That indicates hypothesis and additional variables to collect/create.Break out by countries.
+
+Simpson's Paradox?
+Changes in regression relationships
+What variables should be thrown away?
+Repeat analysis for variable is T or F, or in or out of model.
+Plots + confidence intervals
 
 
 ### Split the data into three pieces
@@ -466,6 +407,10 @@ params <- c(.5, .5)
 # (best <- optim(par = params, fn = ll_helper, method = "L-BFGS-B") )
 ```
 
+glm - family: binomial
+Continue to expand...
+...Bootstrap confidence interval
+compare to glm results
 
 ### Diagnostics for relationships and strong interactions
 

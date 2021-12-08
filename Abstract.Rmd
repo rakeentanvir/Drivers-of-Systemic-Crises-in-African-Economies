@@ -1,0 +1,65 @@
+---
+title: "STAT 535 Final Project - Fall 2021 - Abstract"
+author: 'Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir'
+date: 'Due Date: December 8, 2021, 5:59pm'
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Title: Drivers of Systemic Crises in African Countries
+
+# Group Members
+
+Said Arslan
+
+Declan Gray-Mullen
+
+Rakeen Tanvir
+
+# Project overview and data collection
+
+This is an exploratory observational study to understand what factors drive systemic crises (financial instability) in 13 African countries. 
+
+The primary data was obtained as a mostly clean data set from Kaggle: https://www.kaggle.com/chirin/africa-economic-banking-and-systemic-crisis-data. 
+
+From Kaggle: "The dataset is a derivative of Reinhart et al's Global Crises dataset. It was downloaded from: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx Non-African countries were filtered out from the dataset. And, variables containing notes or sparse data were removed. Years with no data were also filtered out...The dataset specifically focuses on the Banking, Debt, Financial, Inflation and Systemic Crises that occurred, from 1860 to 2014, in 13 African countries, including: Algeria, Angola, Central African Republic, Ivory Coast, Egypt, Kenya, Mauritius, Morocco, Nigeria, South Africa, Tunisia, Zambia and Zimbabwe."
+
+Additional Commodity Import & Export Price Index data was web scraped from and added to the primary data set: https://data.imf.org/?sk=2CDDCCB8-0B59-43E9-B6A0-59210D5605D2&sId=1390030341854 
+
+From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodities Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)
+
+# Objectives and interests
+
+We seek to answer the following questions:
+
+1. What patterns and trends are associated with systemic crises?
+
+2. What economic factors drive systemic crises? Which have the most (or least) effect? How do these differ by country?
+
+3. How do non-economic factors, such as independence from colonial rule, affect systemic crises?
+
+4. How well do models based on data from these African countries predict systemic crises in other countries in Africa or other continents?
+
+# Class material to be used for the analysis
+
+The analysis and presentation will be created using RMarkdown as a powerful communication tool. We make use of several data types including various vectors, matrices, lists, data frames, and tibbles. Web scraping makes use of strings and regular expressions. Data transformations are done using dplyr and visualizations are done using ggplot2. Our regression analysis makes use of techniques from model fitting/optimization, functions of functions, and bootstrapping confidence intervals for regression coefficients. We expect to conduct a logistic regression given that our outcome of interest is a binary variable indicating the presence of a systemic crisis for a particular year and country. If time allows, we plan to make use of sampling methods and Monte Carlo simulation tools. 
+
+# Responsibilities
+
+Declan - Web scraping, data transformation, sampling, Monte Carlo, Bootstrapping
+
+Said - Data collection, economic research, exploratory data analysis including correlation analyses
+
+Rakeen - Regression, Bootstrapping, GitHub, RMarkdown, exploratory data analyses and hypothesis testing
+
+# Conclusion
+
+We expect to identify economic, political, and regional variables that have a significant effect on systemic crises as well as variables that do not have any effect. The results will indicate further data collection and analysis that can be performed for future investigation. 
