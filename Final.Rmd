@@ -412,6 +412,68 @@ Continue to expand...
 ...Bootstrap confidence interval
 compare to glm results
 
+```{r}
+# some percents are Inf, can't perform regression
+# assertthat::assert_that(all(is.finite(ac_imf$inflation_change_cpi)))
+# ac_imf %>% filter(inflation_change_cpi==Inf)
+
+# but we can perform logistic regression on the annual values
+ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
+glm.fit = glm(formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi, family = binomial, data = ac_imf)
+
+glm.probs <- predict(glm.fit, newdata = ac_imf, type = "response")
+
+glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
+
+lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
+
+paste("Training Accuracy", mean(lr_got_it_right))
+paste("Correctly predicted",
+  sum(glm.pred & lr_got_it_right),
+  "of",
+  sum(as.logical(ac_imf$banking_crisis)),
+  "crises"
+)
+paste("False positives",
+  sum(glm.pred & !(lr_got_it_right))
+)
+```
+
+
+In order to potentially capture any non-linearity in the data; we can apply a basis expansion and see if it improves performance.
+```{r}
+#library(grpreg)
+#Data <- gen_nonlinear_data(n=1000)
+input_features = ac_imf %>% select(inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi)
+nrow = length(input_features$inflation_annual_cpi)
+data = as.numeric(as.matrix(input_features))
+X = matrix(data, ncol=3L, nrow=nrow)
+X <- grpreg::expand_spline(X, df=6)$X
+X = as.data.frame(X)
+X$banking_crisis = ac_imf$banking_crisis
+
+glm.fit = glm(formula = banking_crisis ~ V1_1 + V1_2 + V1_3 + V1_4 + V1_5 + V1_6 + V2_1 + V2_2 + V2_3 + V2_4 + V2_5 + V2_6 + V3_1 + V3_2 + V3_3 + V3_4 + V3_5 + V3_6, family = binomial, data = X)
+glm.probs <- predict(glm.fit, newdata = X, type = "response")
+glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
+
+lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
+paste("Training Accuracy", mean(lr_got_it_right))
+paste("Correctly predicted",
+  sum(glm.pred & lr_got_it_right),
+  "of",
+  sum(as.logical(ac_imf$banking_crisis)),
+  "crises"
+)
+paste("False positives",
+  sum(glm.pred & !(lr_got_it_right))
+)
+
+
+
+```
+While we are able to predict 1 more crisis accurately, we also have 1 more false positive.
+
+
 ### Diagnostics for relationships and strong interactions
 
 ### Apply remedial measures, if needed

@@ -655,6 +655,64 @@ X &lt;- Y + .1
 params &lt;- c(.5, .5)
 
 # (best &lt;- optim(par = params, fn = ll_helper, method = &quot;L-BFGS-B&quot;) )</code></pre>
+<pre class="r"><code># some percents are Inf, can&#39;t perform regression
+# assertthat::assert_that(all(is.finite(ac_imf$inflation_change_cpi)))
+# ac_imf %&gt;% filter(inflation_change_cpi==Inf)
+
+# but we can perform logistic regression on the annual values
+ac_imf = ac_imf %&gt;% mutate(banking_crisis=as.factor(banking_crisis))
+glm.fit = glm(formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi, family = binomial, data = ac_imf)</code></pre>
+<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
+<pre class="r"><code>glm.probs &lt;- predict(glm.fit, newdata = ac_imf, type = &quot;response&quot;)
+
+glm.pred &lt;- ifelse(glm.probs &gt; 0.5, TRUE, FALSE)
+
+lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
+
+paste(&quot;Training Accuracy&quot;, mean(lr_got_it_right))</code></pre>
+<pre><code>## [1] &quot;Training Accuracy 0.862433862433862&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Correctly predicted&quot;,
+  sum(glm.pred &amp; lr_got_it_right),
+  &quot;of&quot;,
+  sum(as.logical(ac_imf$banking_crisis)),
+  &quot;crises&quot;
+)</code></pre>
+<pre><code>## [1] &quot;Correctly predicted 12 of 87 crises&quot;</code></pre>
+<pre class="r"><code>paste(&quot;False positives&quot;,
+  sum(glm.pred &amp; !(lr_got_it_right))
+)</code></pre>
+<pre><code>## [1] &quot;False positives 3&quot;</code></pre>
+<p>In order to potentially capture any non-linearity in the data; we can apply a basis expansion and see if it improves performance.</p>
+<pre class="r"><code>#library(grpreg)
+#Data &lt;- gen_nonlinear_data(n=1000)
+input_features = ac_imf %&gt;% select(inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi)
+nrow = length(input_features$inflation_annual_cpi)
+data = as.numeric(as.matrix(input_features))
+X = matrix(data, ncol=3L, nrow=nrow)
+X &lt;- grpreg::expand_spline(X, df=6)$X
+X = as.data.frame(X)
+X$banking_crisis = ac_imf$banking_crisis
+
+glm.fit = glm(formula = banking_crisis ~ V1_1 + V1_2 + V1_3 + V1_4 + V1_5 + V1_6 + V2_1 + V2_2 + V2_3 + V2_4 + V2_5 + V2_6 + V3_1 + V3_2 + V3_3 + V3_4 + V3_5 + V3_6, family = binomial, data = X)</code></pre>
+<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
+<pre class="r"><code>glm.probs &lt;- predict(glm.fit, newdata = X, type = &quot;response&quot;)
+glm.pred &lt;- ifelse(glm.probs &gt; 0.5, TRUE, FALSE)
+
+lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
+paste(&quot;Training Accuracy&quot;, mean(lr_got_it_right))</code></pre>
+<pre><code>## [1] &quot;Training Accuracy 0.862433862433862&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Correctly predicted&quot;,
+  sum(glm.pred &amp; lr_got_it_right),
+  &quot;of&quot;,
+  sum(as.logical(ac_imf$banking_crisis)),
+  &quot;crises&quot;
+)</code></pre>
+<pre><code>## [1] &quot;Correctly predicted 13 of 87 crises&quot;</code></pre>
+<pre class="r"><code>paste(&quot;False positives&quot;,
+  sum(glm.pred &amp; !(lr_got_it_right))
+)</code></pre>
+<pre><code>## [1] &quot;False positives 4&quot;</code></pre>
+<p>While we are able to predict 1 more crisis accurately, we also have 1 more false positive.</p>
 </div>
 <div id="diagnostics-for-relationships-and-strong-interactions" class="section level3" number="4.4.2">
 <h3 number="4.4.2"><span class="header-section-number">4.4.2</span> Diagnostics for relationships and strong interactions</h3>
