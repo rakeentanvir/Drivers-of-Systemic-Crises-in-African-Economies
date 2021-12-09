@@ -310,13 +310,14 @@ imf_df_transform = function(df, col_name){
   }
   df_joinable = data.frame(country=rep(country, times=row_repeats), cc3=rep(cc3, times=row_repeats), year=rep(as.date(year), each=col_repeats))
   df_joinable[col_name] = cpi
+  df_joinable = subset (df_joinable, select = -country)
   return(df_joinable)
 }
 export_df_joinable = imf_df_transform(export_df, "inflation_annual_epi")
 ```
 Lastly, we inner join the two tables!
 ```{r}
-ac_imf = inner_join(ac_imf, export_df_joinable, by = c("country", "cc3", "year"))
+ac_imf = inner_join(ac_imf, export_df_joinable, by = c("cc3", "year"))
 ```
 
 
@@ -336,7 +337,7 @@ as_tibble(import_df)
 import_df_joinable = imf_df_transform(import_df, "inflation_annual_ipi")
 
 # dont run this more than once 
-ac_imf = inner_join(ac_imf, import_df_joinable, by = c("country", "cc3", "year"))
+ac_imf = inner_join(ac_imf, import_df_joinable, by = c("cc3", "year"))
 
 as_tibble(ac_imf %>% select(country, year, inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi))
 ```
