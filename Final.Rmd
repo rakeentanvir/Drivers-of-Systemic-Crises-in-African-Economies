@@ -288,14 +288,32 @@ Combine independence and systemic crises into one plot. Identify marker for ind 
 ## Simple Logistic Regression (SLR) Model
 
 ```{r}
-likelihood <- function(B0, B1, X) {
-  return ( ( 1 + exp( - (B0 + B1 * X) ) ) ^ (-1) )
+# Logistic response function
+pi_i <- function(B0, B1, X) {
+  return ( 1 / ( 1 + exp( - (B0 + B1 * X) ) ) )
 }
 ```
 
 ```{r}
+# The distribution is simply the probability mass function of a Bernoulli random variable
+
+distr_i <- function(B0, B1, X, Y) {
+  probs <- pi_i(B0, B1, X)
+  return ( probs^Y * (1-probs)^(1-Y) ) 
+}
+
+# Since the Yi observations are assumed to be independent, their joint probability function is the likelihood:
+
+likelihood <- function(B0, B1, X, Y) {
+  return ( prod( distr_i(B0, B1, X, Y) ) )
+}
+```
+
+```{r}
+# However, it is numerically advantageous to find the maximum likelihood estimates by working with the logarithm of the joint probability function rather than the actual values which tend to be very close to zero and therefore prone to errors of computational precision.
+
 log_likelihood <- function(B0, B1, X, Y) {
-  return ( sum( Y * log( likelihood(B0, B1, X) )  + ( length(Y) - sum(Y) ) * log( 1 - likelihood(B0, B1, X) ) ) )
+  return ( sum( Y * log(pi_i(B0, B1, X))  + ( length(Y) - sum(Y) ) * log( 1 - pi_i(B0, B1, X) ) ) )
 }
 ```
 
@@ -314,18 +332,25 @@ ll_helper <- function(params) {
 Generate test data:
 
 ```{r}
+X = ac$systemic_crisis
+Y = ac$banking_crisis
+params <- c(0, 0)
+(best <- optim(par = params, fn = ll_helper, method = "BFGS") )
+
 plt <- ggplot(data = ac, mapping = aes(y = systemic_crisis)) 
 
 plt +
-#  geom_point(mapping = aes(x = banking_crisis))
   geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
 
-params <- c(0, 0)
+ggplot() + stat_function( fun = function(x) pi_i(best$par[1], best$par[2], x) ) + xlim(0,1)
 
-(best <- optim(par = params, fn = ll_helper, method = "BFGS") )
+probs <- pi_i(best$par[1], best$par[2], X)
+preds <- ifelse(probs > .0001, TRUE, FALSE)
+(accuracy <- mean(preds == Y))
 
-plot(X, Y)
-
+pred_func <- function(cutoff) {
+  
+}
 ```
 
 
