@@ -27,6 +27,9 @@ Difference in differences?
 Interaction/effects of economic variables?
 
 Regression - robust, logistic, interaction
+https://www.datacamp.com/community/tutorials/logistic-regression-R
+https://daviddalpiaz.github.io/r4sl/logistic-regression.html
+
 
 At which annual rate of inflation does an Inflation Crisis become a practical certainty?
 

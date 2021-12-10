@@ -282,10 +282,18 @@ Only 82 total systemic crises in data, with the earliest occurring in Algeria in
 
 Combine independence and systemic crises into one plot. Identify marker for ind per country on its own line and then its systemic crises. Is systemic crisis associated with xxx? Demonstrate simple relationships with scatter plots and regression. That indicates hypothesis and additional variables to collect/create.Break out by countries.
 
+```{r}
+plt <- ggplot(data = ac, mapping = aes(y = systemic_crisis)) 
+
+plt +
+  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
+```
 
 # Preliminary model investigation
 
 ## Simple Logistic Regression (SLR) Model
+
+The logistic response function:
 
 ```{r}
 # Logistic response function
@@ -294,63 +302,175 @@ pi_i <- function(B0, B1, X) {
 }
 ```
 
+The probability distribution for an observation is simply the probability mass function of a Bernoulli random variable. And since the Yi observations are assumed to be independent, their joint probability function is the likelihood.
+
 ```{r}
-# The distribution is simply the probability mass function of a Bernoulli random variable
 
 distr_i <- function(B0, B1, X, Y) {
   probs <- pi_i(B0, B1, X)
   return ( probs^Y * (1-probs)^(1-Y) ) 
 }
 
-# Since the Yi observations are assumed to be independent, their joint probability function is the likelihood:
-
 likelihood <- function(B0, B1, X, Y) {
   return ( prod( distr_i(B0, B1, X, Y) ) )
 }
 ```
 
+However, it is numerically advantageous to find the maximum likelihood estimates by working with the logarithm of the joint probability function rather than the actual values which tend to be very close to zero and therefore prone to errors of computational precision. Therefore, the objective function to minimize is the log-likelihood:
+
 ```{r}
-# However, it is numerically advantageous to find the maximum likelihood estimates by working with the logarithm of the joint probability function rather than the actual values which tend to be very close to zero and therefore prone to errors of computational precision.
 
 log_likelihood <- function(B0, B1, X, Y) {
-  return ( sum( Y * log(pi_i(B0, B1, X))  + ( length(Y) - sum(Y) ) * log( 1 - pi_i(B0, B1, X) ) ) )
+  return ( sum( Y * log(pi_i(B0, B1, X))  + ( 1 - Y ) * log( 1 - pi_i(B0, B1, X) ) ) )
 }
 ```
 
-```{r}
-ll_data <- function(B0, B1) {
-  return( log_likelihood(B0, B1, X = X, Y = Y) )
-}
-```
+Create a helper function to use in the `optim()` function:
 
 ```{r}
 ll_helper <- function(params) {
-  return ( -ll_data(params[1], params[2]) )
+  return( -log_likelihood(params[1], params[2], X = X, Y = Y) )
+  # Take the negative of the log-likelihood since we want to maximize this value but the optim() function minimizes by default.
 }
 ```
 
-Generate test data:
+Obtain point estimates of the coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood of the data. 
 
 ```{r}
+
 X = ac$systemic_crisis
 Y = ac$banking_crisis
 params <- c(0, 0)
-(best <- optim(par = params, fn = ll_helper, method = "BFGS") )
-
-plt <- ggplot(data = ac, mapping = aes(y = systemic_crisis)) 
-
-plt +
-  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
-
-ggplot() + stat_function( fun = function(x) pi_i(best$par[1], best$par[2], x) ) + xlim(0,1)
+(best <- optim(par = params, fn = ll_helper))
 
 probs <- pi_i(best$par[1], best$par[2], X)
-preds <- ifelse(probs > .0001, TRUE, FALSE)
-(accuracy <- mean(preds == Y))
+cutoff <- mean(unique(probs)) # only two values
+preds <- ifelse(probs > cutoff, TRUE, FALSE)
+correct <- preds == Y
 
-pred_func <- function(cutoff) {
-  
+paste("Training Accuracy", mean(correct))
+paste("Sensitivity", mean(preds[Y==1] == Y[Y==1]))
+paste("Sensitivity", mean(preds[Y==0] == Y[Y==0]))
+paste("Correctly predicted",
+  sum(preds & correct),
+  "of",
+  sum(Y),
+  "crises"
+)
+paste("False positives",
+  sum(preds & !(correct))
+
+)
+```
+
+## Compare to built-in function for Logistic Regression as a family of the Generalized Linear Model
+
+```{r}
+glm_fit = glm(formula = Y ~ X, family = binomial(link = "logit"))
+
+glm_probs <- predict(glm_fit, newdata = data.frame(Y, X), type = "response")
+
+glm_preds <- ifelse(glm_probs > mean(unique(glm_probs)), TRUE, FALSE)
+
+glm_correct <- glm_preds == Y
+
+paste("Training Accuracy", mean(glm_correct))
+paste("Sensitivity", mean(preds[Y==1] == Y[Y==1]))
+paste("Sensitivity", mean(preds[Y==0] == Y[Y==0]))
+paste("Correctly predicted",
+  sum(glm_preds & glm_correct),
+  "of",
+  sum(Y),
+  "crises"
+)
+paste("False positives",
+  sum(glm_preds & !(glm_correct))
+)
+```
+The default method "glm.fit" uses iteratively reweighted least squares (IWLS). 
+
+## Compare likelihood from custom SLR vs. built-in GLM
+
+```{r}
+(slr_ll <- log_likelihood(best$par[1], best$par[2], X, Y))
+(glm_ll <- log_likelihood(glm_fit$coefficients[1],    
+                          glm_fit$coefficients[2], X, Y) )
+```
+
+The optimization procedure provides us with point estimates, but we have no measure of uncertainty for them: neither a standard deviation nor confidence intervals to determine whether or not they are different from 0 with any statistical certainty. The bootstrap method allows us to do so.
+
+## Bootstrap confidence intervals
+
+Construct a bootstrap sample for the estimated coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood. 
+
+```{r}
+n <- nrow(Y)
+M <- 1e4
+b_params <- c(0, 0)
+# fit_bstp <- vector(mode = "list", length = M)
+b0 <- numeric(M)
+b1 <- numeric(M)
+
+max_ll_regression_helper_bstp <- function(b) {
+  return( -log_likelihood(b[1], b[2], X = X, Y = Y) )
 }
+
+for (m in 1:M) {
+  bstp <- sample(n, replace = TRUE)
+  X <- X[bstp]
+  Y <- Y[bstp]
+  fit_bstp <- optim(b_params, max_ll_regression_helper_bstp)
+  b0[m] <- fit_bstp$par[1]
+  b1[m] <- fit_bstp$par[2]
+}
+```
+
+
+## c. Estimate the standard deviations of each of the coefficients.
+
+```{r}
+b0_summary <- summary(b0)
+b0_samp_var <- sum( (b0 - b0_summary["Mean"])^2 ) / ( length(b0) - 1 )
+(b0_std_dev <- sqrt(b0_samp_var))
+sd(b0)
+```
+
+```{r}
+b1_summary <- summary(b1)
+b1_samp_var <- sum( (b1 - b1_summary["Mean"])^2 ) / ( length(b1) - 1 )
+(b1_std_dev <- sqrt(b1_samp_var))
+sd(b1)
+```
+
+
+## d. Construct 95% confidence intervals for the coefficients and, based on those, determine whether or not we can reject a null hypothesis that each of them is equal to zero.
+
+```{r}
+alpha <- .05
+probs <- c(alpha/2, 1 - alpha/2)
+```
+
+```{r}
+( b0_empirical_bootstrap_CI <- quantile(b0, probs) )
+
+ifelse(b0_empirical_bootstrap_CI[1] < 0 & 0 < b0_empirical_bootstrap_CI[2], "Fail to reject null", "Reject null")
+
+ggplot(data.frame(x = b0)) +
+  geom_histogram(aes(x = x, y = ..density..), color = "white") +
+  geom_vline(xintercept = b0_empirical_bootstrap_CI, col = "blue")
+
+```
+
+
+```{r}
+( b1_empirical_bootstrap_CI <- quantile(b1, probs) )
+
+ifelse(b1_empirical_bootstrap_CI[1] < 0 & 0 < b1_empirical_bootstrap_CI[2], "Fail to reject null", "Reject null")
+
+
+ggplot(data.frame(x = b1)) +
+  geom_histogram(aes(x = x, y = ..density..), color = "white") +
+  geom_vline(xintercept = b1_empirical_bootstrap_CI, col = "blue")
 ```
 
 
