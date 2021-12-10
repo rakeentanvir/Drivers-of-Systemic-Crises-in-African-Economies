@@ -18,33 +18,9 @@ library(modelr)
 library(countrycode)
 ```
 
-# Completed Tasks:
+# Data collection
 
-Install GitHub and GitHub Desktop App
-
-Share repo on GitHub to usernames: graydh, arslansaid
-
-# To do
-
-Sampling - empirical data vs. theoretical distribution using chi-square goodness of fit tests, bootstrapping
-Monte Carlo - homework #2
-  Identify distribution for data
-  Investigate whether t-test is appropriate with power study
-  Determine confidence interval for variable of interest
-Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
-Difference in differences?
-
-Interaction/effects of economic variables?
-
-Regression - robust, logistic, interaction
-
-At which annual rate of inflation does an Inflation Crisis become a practical certainty?
-
-# Data collection and preparation
-
-## Data collection
-
-### What type of observational study are we conducting? 
+## What type of observational study are we conducting? 
 
 Confirmatory - confirm or not confirm hypothesis derived from previous studies or hunches
 
@@ -76,9 +52,9 @@ Inspiration
 
 My inspiration stems from two questions: "Which factors are most associated with Systemic Crises in Africa?" And; "At which annual rate of inflation does an Inflation Crisis become a practical certainty?"
 
-## Data preparation
+# Data preparation
 
-### Import and transform into tidy data
+## Import and transform into tidy data
 
 ```{r}
 (ac <- 
@@ -110,17 +86,10 @@ My inspiration stems from two questions: "Which factors are most associated with
 
 assertthat::noNA(ac)
 ```
-```{r, include=FALSE}
-df = ac
-
-df_test <- filter(df, (systemic_crisis == FALSE) && (banking_crisis == TRUE))
-```
-
-Bootstrap confidence interval for regression coefficients (HW10)
 
 The data is tidy: Each variable has its own column, each observation has its own row, and each value has its own cell.
 
-### The variables in `ac`
+## The variables in `ac`
 
 1. `case` is a factor variable that identifies the index for each country from the original, global dataset.  
 
@@ -150,94 +119,8 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 14. `banking_crisis` <logical>
 
-How are the different crises related? Heat map, refine question. Reverse engineering to identify motivation for compiling the data set. Investigate relevant research and economic definitions. 
 
-### View the factor variables with plots and a tibble
-
-```{r}
-plt <- ggplot(data = df)
-plt + geom_bar(mapping = aes(x = case))
-plt + geom_bar(mapping = aes(x = cc3))
-plt + geom_bar(mapping = aes(x = country)) +
-  theme(axis.text.x=element_blank())
-
-(factors <- unique(df[ , 1:3]) )
-
-```
-
-### Focus on years following independence. 
-
-```{r}
-plt + 
-  geom_point(mapping = aes(x = year, y = independence, color = country))
-
-(indep_table <- df %>% 
-  filter(independence == 1) %>%  
-  group_by(country) %>% 
-  summarize(indep_year = min(year), count = n() ) %>% 
-  arrange(indep_year) %>% 
-  mutate(prop = count/sum(count))
-)
-
-# Add date of independence
-
-
-```
-
-Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
-
-```{r}
-plt + 
-  geom_point(mapping = aes(x = year, y = systemic_crisis, color = country))
-
-# Jitter or predetermined distances
-# TRUE values only
-# ideological basis
-
-(sys_crisis_table <- df %>% 
-  filter(systemic_crisis == 1) %>%  
-  group_by(country) %>% 
-  summarize(earliest_sys_crisis = min(year), count = n() ) %>% 
-  arrange(earliest_sys_crisis) %>% 
-  mutate(prop = count/sum(count))
-)
-```
-
-Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
-
-Combine independence and systemic crises into one plot. Identify marker for ind per country on its own line and then its systemic crises. Is systemic crisis associated with xxx? Demonstrate simple relationships with scatter plots and regression. That indicates hypothesis and additional variables to collect/create.Break out by countries.
-
-Simpson's Paradox?
-Changes in regression relationships
-What variables should be thrown away?
-Repeat analysis for variable is T or F, or in or out of model.
-Plots + confidence intervals
-
-
-### Split the data into three pieces
-
-~60% of the data goes into a training (or exploration) set
-
-~20% goes into a test set used to compare models by hand
-
-~20% is held back for a validation set to test the final model
-
-What split decision rule should we follow?
-
-1. Split by country.
-
-2. Randomly select observations from the four highlighted countries to split among the query and test sets. 
-
-3. Randomly select observations from the entire data set to split among the training, query, and test sets. 
-
-Because we are working with time series data, let's maintain continuity over time and split the data by country.
-
-```{r}
-train_df <- NA
-```
-
-
-### Web Scraping: Commodity Import & Export Price Index
+# Web Scraping: Commodity Import & Export Price Index
 
 From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)
 ```{r}
@@ -356,25 +239,57 @@ ac_imf = ac_imf %>% filter(!is.na(inflation_change_cpi))
 as_tibble(ac_imf %>% arrange(cc3, year) %>% select(cc3, year, inflation_annual_cpi, inflation_change_cpi, inflation_annual_epi, inflation_change_epi, inflation_annual_ipi, inflation_change_ipi))
 ```
 
-## Preliminary checks on data quality
 
-### Edit checks and plots to identify gross data errors and extreme outliers
-
-## Preliminary model investigation
-
-### Simple Logistic Regression Model
+# Exploratory Data Analysis
 
 ```{r}
-ac_matrix <- as.matrix(ac[5:ncol(ac)])
-Y <- ac_matrix[ , "systemic_crisis"]
-X <- cbind( rep(1, nrow(ac_matrix)), ac_matrix[ , 2:ncol(ac_matrix)] )
+ac_eda
 
+geom_point(mapping = aes(x = year, y = independence, color = country))
+
+geom_point(mapping = aes(x = year, y = systemic_crisis, color = country))
+
+# Jitter or predetermined distances
+# TRUE values only
+# ideological basis
+
+plt +
+#  geom_point(mapping = aes(x = banking_crisis))
+  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
+
+(indep_table <- df %>% 
+  filter(independence == 1) %>%  
+  group_by(country) %>% 
+  summarize(indep_year = min(year), count = n() ) %>% 
+  arrange(indep_year) %>% 
+  mutate(prop = count/sum(count))
+)
+
+(sys_crisis_table <- df %>% 
+  filter(systemic_crisis == 1) %>%  
+  group_by(country) %>% 
+  summarize(earliest_sys_crisis = min(year), count = n() ) %>% 
+  arrange(earliest_sys_crisis) %>% 
+  mutate(prop = count/sum(count))
+)
+
+# Add date of independence
 ```
 
+Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
+
+Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
+
+Combine independence and systemic crises into one plot. Identify marker for ind per country on its own line and then its systemic crises. Is systemic crisis associated with xxx? Demonstrate simple relationships with scatter plots and regression. That indicates hypothesis and additional variables to collect/create.Break out by countries.
+
+
+# Preliminary model investigation
+
+## Simple Logistic Regression (SLR) Model
 
 ```{r}
 likelihood <- function(B0, B1, X) {
-  return ( ( 1 + exp( -t(X) )^(-1) ) )
+  return ( ( 1 + exp( - (B0 + B1 * X) ) ) ^ (-1) )
 }
 ```
 
@@ -399,19 +314,27 @@ ll_helper <- function(params) {
 Generate test data:
 
 ```{r}
-n <- 1e4
-Y <- rep( rbernoulli(n, p = .1) )
-X <- Y + .1
+plt <- ggplot(data = ac, mapping = aes(y = systemic_crisis)) 
 
-params <- c(.5, .5)
+plt +
+#  geom_point(mapping = aes(x = banking_crisis))
+  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
 
-# (best <- optim(par = params, fn = ll_helper, method = "L-BFGS-B") )
+params <- c(0, 0)
+
+(best <- optim(par = params, fn = ll_helper, method = "BFGS") )
+
+plot(X, Y)
+
 ```
 
-glm - family: binomial
-Continue to expand...
+
+## Multiple Logistic Regression (MLR) Model
+
 ...Bootstrap confidence interval
 compare to glm results
+
+# General Linear Model Regression
 
 ```{r}
 # some percents are Inf, can't perform regression
@@ -473,33 +396,3 @@ paste("False positives",
 
 ```
 While we are able to predict 1 more crisis accurately, we also have 1 more false positive.
-
-
-### Diagnostics for relationships and strong interactions
-
-### Apply remedial measures, if needed
-
-
-# Reduction of number of explanatory variables (for exploratory observational studies)
-
-Not required for confirmatory observational studies. 
-
-## Determine several potentially useful subsets of explanatory variables; include known essential variables
-
-
-# Model refinement and selection
-
-## Investigate curvature and interaction effects more fully
-
-## Study residuals and other diagnostics
-
-## Apply remedial measures, if needed
-
-## Select tentative model
-
-
-# Model validation - 2-3 data sets
-
-## Validity checks
-
-## Final regression model

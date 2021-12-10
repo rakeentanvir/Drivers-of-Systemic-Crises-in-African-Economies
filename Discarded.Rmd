@@ -1,0 +1,101 @@
+---
+title: "Discarded"
+author: "Rakeen Tanvir"
+date: "12/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Completed Tasks:
+
+Install GitHub and GitHub Desktop App
+
+Share repo on GitHub to usernames: graydh, arslansaid
+
+# To do
+
+Sampling - empirical data vs. theoretical distribution using chi-square goodness of fit tests, bootstrapping
+Monte Carlo - homework #2
+  Identify distribution for data
+  Investigate whether t-test is appropriate with power study
+  Determine confidence interval for variable of interest
+Bootstrapping - quantify uncertainty with confidence interval of point estimate (double numeric predictor variables)
+Difference in differences?
+Interaction/effects of economic variables?
+
+Regression - robust, logistic, interaction
+
+At which annual rate of inflation does an Inflation Crisis become a practical certainty?
+
+# Ideas
+Simpson's Paradox?
+Changes in regression relationships
+What variables should be thrown away?
+Repeat analysis for variable is T or F, or in or out of model.
+Plots + confidence intervals
+How are the different crises related? Heat map, refine question. Reverse engineering to identify motivation for compiling the data set. Investigate relevant research and economic definitions. 
+Because we are working with time series data, let's maintain continuity over time and split the data by country.
+
+```{r}
+plt <- ggplot(data = df)
+plt + geom_bar(mapping = aes(x = case))
+plt + geom_bar(mapping = aes(x = cc3))
+plt + geom_bar(mapping = aes(x = country)) +
+  theme(axis.text.x=element_blank())
+
+(factors <- unique(df[ , 1:3]) )
+```
+
+### Split the data into three pieces
+
+~60% of the data goes into a training (or exploration) set
+
+~20% goes into a test set used to compare models by hand
+
+~20% is held back for a validation set to test the final model
+
+What split decision rule should we follow?
+
+1. Split by country.
+
+2. Randomly select observations from the four highlighted countries to split among the query and test sets. 
+
+3. Randomly select observations from the entire data set to split among the training, query, and test sets. 
+
+## Preliminary checks on data quality
+
+### Edit checks and plots to identify gross data errors and extreme outliers
+
+### Diagnostics for relationships and strong interactions
+
+### Apply remedial measures, if needed
+
+
+# Reduction of number of explanatory variables (for exploratory observational studies)
+
+Not required for confirmatory observational studies. 
+
+## Determine several potentially useful subsets of explanatory variables; include known essential variables
+
+
+# Model refinement and selection
+
+## Investigate curvature and interaction effects more fully
+
+## Study residuals and other diagnostics
+
+## Apply remedial measures, if needed
+
+## Select tentative model
+
+
+# Model validation - 2-3 data sets
+
+## Validity checks
+
+## Final regression model
+
+### View the factor variables with plots and a tibble
