@@ -16,6 +16,7 @@ library(tidyverse)
 library(readr)
 library(modelr)
 library(countrycode)
+library(ggplot2)
 ```
 
 # Data collection
@@ -121,28 +122,33 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 
 # Web Scraping: Commodity Import & Export Price Index
-
-From Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index(2012=100)
-```{r}
+*Commodity of Terms of Trade: Commodity Import/Export Price Index, Individual Commodites Weighted by Ratio of Imports to GDP Historical, Annual (1965-present), Fixed Weights, Index (2012=100)*
+```{r, include=FALSE}
 ac_imf = ac
 ```
 In order to expand the features of our dataset, we scrape additional data provided by the International Monetary Fund (IMF). While the IMF provides many formats including API REST endpoints, excel and csv file formats but we instead scrape the rendered html using their [online table viewer](https://data.imf.org/?sk=2CDDCCB8-0B59-43E9-B6A0-59210D5605D2&sId=1390030341854).
 
-Using the tool we selected the data desired and used inspect element to view the html source for the current page view. We then copied the div representing the entire table in html and pasted the text into local files.
+Using the viewer we selected the desired data and used inspect in Chrome to view the rendered html for the current page. We copied the div representing the entire table in html and pasted the text into local files.
 
+First we wrote a function to convert the html, into a df matching the table viewer online.
 ```{r}
 imf_html_to_df = function (html_filename){
+  
+  # we get the column labels by looking at the custom filename
   filename_pieces = str_split(html_filename, "_")[[1]]
   
+  # read all the html in the file
   html_str = readLines(html_filename)
+  
+  # function returning the elements matched by the regex
   html_to_byRowList = function(full_file_str){
     regex_exp = "<div class=\"PPTSCellConText.*?>(.*?)<"
     result = stringr::str_match_all(full_file_str, regex_exp)
-    return(result)
+    return(result[[1]][, 2])
   }
   
-  # by row vector of all elements in our df
-  elements = html_to_byRowList(html_str)[[1]][, 2] 
+  # all elements in our df by row
+  elements = html_to_byRowList(html_str)
   
   # df 'schema' defined
   columns = c("country", seq(as.integer(filename_pieces[3]), as.integer(filename_pieces[4]), by=1))
@@ -150,10 +156,11 @@ imf_html_to_df = function (html_filename){
   schema = matrix(ncol = num_columns, nrow = 0)
   df = data.frame(schema)
   colnames(df) = columns
+
+  # grab 'inflation' elements, ignoring column headers
+  elements = elements[num_columns:length(elements)]
   
-  elements = elements[num_columns:length(elements)] # first elements are columns year labels (missing 'country')
-  
-  # populate df iterating through elements
+  # populate df iterating through element by df row
   start = 1
   while(start + num_columns - 1 <= length(elements)){
     curr = elements[start:(start+num_columns-1)]
@@ -161,68 +168,85 @@ imf_html_to_df = function (html_filename){
     df[nrow(df) + 1,] = curr
     start = start + num_columns
   }
+  
+  # add cc3 labels used in joining later
   df$cc3 = as_factor(countrycode(df$country, origin = 'country.name', destination = 'iso3c')) 
   return(df)
 }
-
-export_df_1 = imf_html_to_df("reference/IMF_export_1965_1988_.html")
 ```
 ```{r, include=FALSE}
+export_df_1 = imf_html_to_df("reference/IMF_export_1965_1988_.html")
 export_df_2 = imf_html_to_df("reference/IMF_export_1989_2014_.html")
 export_df_3 = imf_html_to_df("reference/IMF_export_2015_2020_.html")
 ```
+
+We then used that function to generate df's for each 20 year grouping and join them together final IMF df (since at most 20 columns render)!
 ```{r}
-export_df = merge(x=merge(x=export_df_1, y=export_df_2, by=c("cc3", "country")), y=export_df_3, by=c("cc3", "country"))
-export_df = export_df %>% arrange(cc3)
+export_df = merge(x=merge(x=export_df_1, y=export_df_2, by=c("cc3", "country")), y=export_df_3, by=c("cc3", "country")) 
 as_tibble(export_df)
 ```
 
-Transform the IMF  into a 'join compatable' data frame.
+Lastly we need to join this data to our main ac data. Two complexities:
+1. reformatting the year columns as a single new 'year' column
+2. join on year & cc3 code, since Ivory Coast has different names
+
+Write a function to transform the IMF df into a 'join-compatible' format:
 ```{r}
 imf_df_transform = function(df, col_name){
-  just_cpi_df = subset(df, select = -c(cc3, country))
+  # setup
+  df = df %>% arrange(cc3)
+  
+  # select each grouping of data we need
+  just_cpi_df = subset(df, select = -c(cc3, country)) 
   cpi = unlist(just_cpi_df, use.names=FALSE)
   cc3 = unlist(subset(df, select = c(cc3)), use.names=FALSE)
   country = unlist(subset(df, select = c(country)), use.names=FALSE)
   year = colnames(just_cpi_df)
+  
+  # helpers for reconstruction
   row_repeats = length(cpi) / length(cc3)
   col_repeats = length(cpi) / length(year)
   as.date=function(x){
     year_starts = paste(as.character(x), rep("01", length(x)), rep("01", length(x)), sep="-" )
     return(as.Date(year_starts, format="%Y-%m-%d"))
   }
-  df_joinable = data.frame(country=rep(country, times=row_repeats), cc3=rep(cc3, times=row_repeats), year=rep(as.date(year), each=col_repeats))
+  
+  # reconstruct the joinable df
+  df_joinable = data.frame(
+    country=rep(country, times=row_repeats),
+    cc3=rep(cc3, times=row_repeats),
+    year=rep(as.date(year),each=col_repeats)
+  )
   df_joinable[col_name] = cpi
+  
+  # we remove the country column since we dont need for join
   df_joinable = subset (df_joinable, select = -country)
   return(df_joinable)
 }
-export_df_joinable = imf_df_transform(export_df, "inflation_annual_epi")
 ```
-Lastly, we inner join the two tables!
+
+Lastly, we use this function and inner join the new data to ac!
 ```{r}
+export_df_joinable = imf_df_transform(export_df, "inflation_annual_epi")
 ac_imf = inner_join(ac_imf, export_df_joinable, by = c("cc3", "year"))
 ```
 
-
-We then repeat the whole process to process webpages containing import price data
-```{r}
-import_df_1 = imf_html_to_df("reference/IMF_import_1965_1990_.html")
-```
+We can then repeat the scraping process to obtain import price data:
 ```{r, include=FALSE}
+import_df_1 = imf_html_to_df("reference/IMF_import_1965_1990_.html")
 import_df_2 = imf_html_to_df("reference/IMF_import_1991_2016_.html")
 import_df_3 = imf_html_to_df("reference/IMF_import_2017_2020_.html")
 ```
 ```{r}
 import_df = merge(x=merge(x=import_df_1, y=import_df_2, by=c("cc3", "country")), y=import_df_3, by=c("cc3", "country"))
 import_df = import_df %>% arrange(cc3)
-as_tibble(import_df)
-
 import_df_joinable = imf_df_transform(import_df, "inflation_annual_ipi")
 
-# dont run this more than once 
 ac_imf = inner_join(ac_imf, import_df_joinable, by = c("cc3", "year"))
-
 as_tibble(ac_imf %>% select(country, year, inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi))
+```
+```{r, include=FALSE}
+rm(export_df_1, export_df_2, export_df_3, import_df_1, import_df_2, import_df_3)
 ```
 
 other ideas: rainfall, almanac/climate date
@@ -234,8 +258,13 @@ ac_imf = ac_imf %>% group_by(cc3) %>% arrange(year) %>%
   mutate(inflation_change_epi=(inflation_annual_epi-lag(inflation_annual_epi))/lag(inflation_annual_epi)*100) %>%
   mutate(inflation_change_ipi=(inflation_annual_ipi-lag(inflation_annual_ipi))/lag(inflation_annual_ipi)*100) %>% ungroup()
 
+# remove the undefined first year values
 ac_imf = ac_imf %>% filter(!is.na(inflation_change_cpi))
 
+# remove the one Inf tuple :(
+ac_imf = ac_imf %>% filter(!(inflation_change_cpi==Inf))
+
+# show the new data!
 as_tibble(ac_imf %>% arrange(cc3, year) %>% select(cc3, year, inflation_annual_cpi, inflation_change_cpi, inflation_annual_epi, inflation_change_epi, inflation_annual_ipi, inflation_change_ipi))
 ```
 
@@ -257,19 +286,19 @@ plt +
 #  geom_point(mapping = aes(x = banking_crisis))
   geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
 
-(indep_table <- df %>% 
-  filter(independence == 1) %>%  
-  group_by(country) %>% 
-  summarize(indep_year = min(year), count = n() ) %>% 
-  arrange(indep_year) %>% 
+(indep_table <- df %>%
+  filter(independence == 1) %>%
+  group_by(country) %>%
+  summarize(indep_year = min(year), count = n() ) %>%
+  arrange(indep_year) %>%
   mutate(prop = count/sum(count))
 )
 
-(sys_crisis_table <- df %>% 
-  filter(systemic_crisis == 1) %>%  
-  group_by(country) %>% 
-  summarize(earliest_sys_crisis = min(year), count = n() ) %>% 
-  arrange(earliest_sys_crisis) %>% 
+(sys_crisis_table <- df %>%
+  filter(systemic_crisis == 1) %>%
+  group_by(country) %>%
+  summarize(earliest_sys_crisis = min(year), count = n() ) %>%
+  arrange(earliest_sys_crisis) %>%
   mutate(prop = count/sum(count))
 )
 
@@ -482,62 +511,45 @@ compare to glm results
 # General Linear Model Regression
 
 ```{r}
-# some percents are Inf, can't perform regression
-# assertthat::assert_that(all(is.finite(ac_imf$inflation_change_cpi)))
-# ac_imf %>% filter(inflation_change_cpi==Inf)
-
-# but we can perform logistic regression on the annual values
 ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
-glm.fit = glm(formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi, family = binomial, data = ac_imf)
-
+glm.fit = glm(
+  formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi,
+  family = binomial,
+  data = ac_imf
+)
 glm.probs <- predict(glm.fit, newdata = ac_imf, type = "response")
-
 glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
 
-lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
-
-paste("Training Accuracy", mean(lr_got_it_right))
-paste("Correctly predicted",
-  sum(glm.pred & lr_got_it_right),
-  "of",
-  sum(as.logical(ac_imf$banking_crisis)),
-  "crises"
-)
-paste("False positives",
-  sum(glm.pred & !(lr_got_it_right))
-)
+print_accuracy_metrics = function(pred, trues){
+  lr_got_it_right = pred == trues
+  out = paste("Training Accuracy", mean(lr_got_it_right))
+  out = c(out, paste("Correctly predicted",
+    sum(pred & lr_got_it_right),
+    "of",
+    sum(trues),
+    "crises"
+  ))
+  out = c(out, paste("False positives",
+    sum(pred & !(lr_got_it_right))
+  ))
+  return(out)
+}
+print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 ```
+This approach has a major flaw. Since the absolute inflation index values are dependent on the year, all this is telling us is later years are more likely to be a crises. We can switch to using the relative percent change instead of the aboslute value to make the input data time-series-independent, and performance takes a massive hit.
 
-
-In order to potentially capture any non-linearity in the data; we can apply a basis expansion and see if it improves performance.
 ```{r}
-#library(grpreg)
-#Data <- gen_nonlinear_data(n=1000)
-input_features = ac_imf %>% select(inflation_annual_cpi, inflation_annual_epi, inflation_annual_ipi)
-nrow = length(input_features$inflation_annual_cpi)
-data = as.numeric(as.matrix(input_features))
-X = matrix(data, ncol=3L, nrow=nrow)
-X <- grpreg::expand_spline(X, df=6)$X
-X = as.data.frame(X)
-X$banking_crisis = ac_imf$banking_crisis
-
-glm.fit = glm(formula = banking_crisis ~ V1_1 + V1_2 + V1_3 + V1_4 + V1_5 + V1_6 + V2_1 + V2_2 + V2_3 + V2_4 + V2_5 + V2_6 + V3_1 + V3_2 + V3_3 + V3_4 + V3_5 + V3_6, family = binomial, data = X)
-glm.probs <- predict(glm.fit, newdata = X, type = "response")
+glm.fit = glm(
+  formula = banking_crisis ~  inflation_change_cpi + inflation_change_epi + inflation_change_ipi,
+  family = binomial,
+  data = ac_imf
+)
+glm.probs <- predict(glm.fit, newdata = ac_imf, type = "response")
 glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
 
-lr_got_it_right = glm.pred == as.logical(ac_imf$banking_crisis)
-paste("Training Accuracy", mean(lr_got_it_right))
-paste("Correctly predicted",
-  sum(glm.pred & lr_got_it_right),
-  "of",
-  sum(as.logical(ac_imf$banking_crisis)),
-  "crises"
-)
-paste("False positives",
-  sum(glm.pred & !(lr_got_it_right))
-)
-
-
-
+print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 ```
-While we are able to predict 1 more crisis accurately, we also have 1 more false positive.
+
+
+
+
