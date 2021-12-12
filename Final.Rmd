@@ -21,66 +21,34 @@ library(ggplot2)
 
 # Data collection
 
-## What type of observational study are we conducting? 
-
-Confirmatory - confirm or not confirm hypothesis derived from previous studies or hunches
-
-Exploratory - search for explanatory variables that might be related to the response variable
-
-If confirmatory, which explanatory variables are:
-
-Primary variables - involved in the hypothesis
-
-Control variables - included to reflect existing knowledge by accounting for known influences on the response variable
-
-Acknowledgements
-
-Reinhart, C., Rogoff, K., Trebesch, C. and Reinhart, V. (2019) Global Crises Data by Country.
-[online] https://www.hbs.edu/behavioral-finance-and-financial-stability/data. Available at: https://www.hbs.edu/behavioral-finance-and-financial-stability/data/Pages/global.aspx [Accessed: 17 July 2019].
-
-On this page we present data collected over many years by Carmen Reinhart (with her coauthors Ken Rogoff, Christoph Trebesch, and Vincent Reinhart). These include Banking Crisis dates for more than 70 countries from 1800-present, exchange rate crises, stock market crises, sovereign debt growth and default, and many other data series. 
-
-To see Carmen’s related research, please visit her website here:
-
-https://carmenreinhart.com/debt-and-debt-crises/
-
-https://carmenreinhart.com/wp-content/uploads/2020/02/229_data.pdf
-
-
-The BFFS Project keeps this data updated and available for download. Please email us with any questions.
-
-Inspiration
-
-My inspiration stems from two questions: "Which factors are most associated with Systemic Crises in Africa?" And; "At which annual rate of inflation does an Inflation Crisis become a practical certainty?"
-
 # Data preparation
 
 ## Import and transform into tidy data
 
 ```{r}
-(ac <- 
-   read_csv("reference/african_crises.csv", 
+(ac <-
+   read_csv("reference/african_crises.csv",
     col_types = cols(
-        case = col_integer(), 
-        cc3 = col_factor(ordered = TRUE), 
+        case = col_integer(),
+        cc3 = col_factor(ordered = TRUE),
         country = col_character(),
-        
+
         year = col_date(format = "%Y"),
-        
+
         exch_usd = col_double(),
-        gdp_weighted_default = col_double(), 
+        gdp_weighted_default = col_double(),
         inflation_annual_cpi = col_double(),
-        
-        systemic_crisis = col_logical(), 
-        domestic_debt_in_default = col_logical(), 
-        sovereign_external_debt_default = col_logical(), 
-        independence = col_logical(), 
-        currency_crises = col_integer(), 
+
+        systemic_crisis = col_logical(),
+        domestic_debt_in_default = col_logical(),
+        sovereign_external_debt_default = col_logical(),
+        independence = col_logical(),
+        currency_crises = col_integer(),
         inflation_crises = col_logical(),
-        
+
         banking_crisis = col_character()
     )
-  ) 
+  )
   %>% mutate(banking_crisis = (banking_crisis == "crisis"))
   %>% mutate(currency_crises = (currency_crises > 0)) # assume 2==1 in 4 cases
 )
@@ -100,7 +68,7 @@ The data is tidy: Each variable has its own column, each observation has its own
 
 4. `year` is a date variable that identifies the year of the observation.
 
-5. `systemic_crisis` <logical> that identifies whether the observation is associated with a systemic crisis. 
+5. `systemic_crisis` <logical> that identifies whether the observation is associated with a systemic crisis.
 
 6. `exch_usd` <dbl>
 
@@ -133,23 +101,23 @@ Using the viewer we selected the desired data and used inspect in Chrome to view
 First we wrote a function to convert the html, into a df matching the table viewer online.
 ```{r}
 imf_html_to_df = function (html_filename){
-  
+
   # we get the column labels by looking at the custom filename
   filename_pieces = str_split(html_filename, "_")[[1]]
-  
+
   # read all the html in the file
   html_str = readLines(html_filename)
-  
+
   # function returning the elements matched by the regex
   html_to_byRowList = function(full_file_str){
     regex_exp = "<div class=\"PPTSCellConText.*?>(.*?)<"
     result = stringr::str_match_all(full_file_str, regex_exp)
     return(result[[1]][, 2])
   }
-  
+
   # all elements in our df by row
   elements = html_to_byRowList(html_str)
-  
+
   # df 'schema' defined
   columns = c("country", seq(as.integer(filename_pieces[3]), as.integer(filename_pieces[4]), by=1))
   num_columns = length(columns)
@@ -159,7 +127,7 @@ imf_html_to_df = function (html_filename){
 
   # grab 'inflation' elements, ignoring column headers
   elements = elements[num_columns:length(elements)]
-  
+
   # populate df iterating through element by df row
   start = 1
   while(start + num_columns - 1 <= length(elements)){
@@ -168,9 +136,9 @@ imf_html_to_df = function (html_filename){
     df[nrow(df) + 1,] = curr
     start = start + num_columns
   }
-  
+
   # add cc3 labels used in joining later
-  df$cc3 = as_factor(countrycode(df$country, origin = 'country.name', destination = 'iso3c')) 
+  df$cc3 = as_factor(countrycode(df$country, origin = 'country.name', destination = 'iso3c'))
   return(df)
 }
 ```
@@ -182,7 +150,7 @@ export_df_3 = imf_html_to_df("reference/IMF_export_2015_2020_.html")
 
 We then used that function to generate df's for each 20 year grouping and join them together final IMF df (since at most 20 columns render)!
 ```{r}
-export_df = merge(x=merge(x=export_df_1, y=export_df_2, by=c("cc3", "country")), y=export_df_3, by=c("cc3", "country")) 
+export_df = merge(x=merge(x=export_df_1, y=export_df_2, by=c("cc3", "country")), y=export_df_3, by=c("cc3", "country"))
 as_tibble(export_df)
 ```
 
@@ -195,14 +163,14 @@ Write a function to transform the IMF df into a 'join-compatible' format:
 imf_df_transform = function(df, col_name){
   # setup
   df = df %>% arrange(cc3)
-  
+
   # select each grouping of data we need
-  just_cpi_df = subset(df, select = -c(cc3, country)) 
+  just_cpi_df = subset(df, select = -c(cc3, country))
   cpi = unlist(just_cpi_df, use.names=FALSE)
   cc3 = unlist(subset(df, select = c(cc3)), use.names=FALSE)
   country = unlist(subset(df, select = c(country)), use.names=FALSE)
   year = colnames(just_cpi_df)
-  
+
   # helpers for reconstruction
   row_repeats = length(cpi) / length(cc3)
   col_repeats = length(cpi) / length(year)
@@ -210,7 +178,7 @@ imf_df_transform = function(df, col_name){
     year_starts = paste(as.character(x), rep("01", length(x)), rep("01", length(x)), sep="-" )
     return(as.Date(year_starts, format="%Y-%m-%d"))
   }
-  
+
   # reconstruct the joinable df
   df_joinable = data.frame(
     country=rep(country, times=row_repeats),
@@ -218,7 +186,7 @@ imf_df_transform = function(df, col_name){
     year=rep(as.date(year),each=col_repeats)
   )
   df_joinable[col_name] = cpi
-  
+
   # we remove the country column since we dont need for join
   df_joinable = subset (df_joinable, select = -country)
   return(df_joinable)
@@ -253,7 +221,7 @@ other ideas: rainfall, almanac/climate date
 
 ### Transform Index Annual to Index Percentage Change
 ```{r}
-ac_imf = ac_imf %>% group_by(cc3) %>% arrange(year) %>% 
+ac_imf = ac_imf %>% group_by(cc3) %>% arrange(year) %>%
   mutate(inflation_change_cpi=(inflation_annual_cpi-lag(inflation_annual_cpi))/lag(inflation_annual_cpi)*100) %>%
   mutate(inflation_change_epi=(inflation_annual_epi-lag(inflation_annual_epi))/lag(inflation_annual_epi)*100) %>%
   mutate(inflation_change_ipi=(inflation_annual_ipi-lag(inflation_annual_ipi))/lag(inflation_annual_ipi)*100) %>% ungroup()
@@ -272,21 +240,119 @@ as_tibble(ac_imf %>% arrange(cc3, year) %>% select(cc3, year, inflation_annual_c
 # Exploratory Data Analysis
 
 ```{r}
-ac_eda
+names(ac)
+```
 
-geom_point(mapping = aes(x = year, y = independence, color = country))
+```{r}
+# Exploratory Data (ed) set
+ed_orig <- ac %>%
 
-geom_point(mapping = aes(x = year, y = systemic_crisis, color = country))
+  select(c(cc3, country, year, case, systemic_crisis, banking_crisis, currency_crises, inflation_crises, independence, domestic_debt_in_default, sovereign_external_debt_default, inflation_annual_cpi, exch_usd)) %>%
 
-# Jitter or predetermined distances
-# TRUE values only
-# ideological basis
+  mutate_at(
+    vars(systemic_crisis, banking_crisis, currency_crises, inflation_crises, independence, domestic_debt_in_default, sovereign_external_debt_default),
+    as.integer) %>%
+
+  data.frame()
+
+ed <- ed_orig[ , -c(1:3) ]
+```
+
+
+
+```{r}
+head(ed)
+```
+
+```{r}
+summary(ed)
+```
+
+## Data visualization
+
+### Histograms
+
+Visualize spread of the distribution of numeric variables.
+
+```{r}
+# par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
+for(i in 1:ncol(ed)) {
+    hist(ed[,i], main=names(ed)[i])
+}
+```
+
+Crises and debt default do not happen on most years. Most of the observations are associated with years of independence. The exchange rate to USD and annual CPI inflation are highly right-skewed with very outlier values. These may have something to do with the crises and debt defaults.
+
+### Box and Whisker
+
+Easily identify outliers
+
+```{r}
+# par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
+for(i in 1:ncol(ed)) {
+    boxplot(ed[,i], main=names(ed)[i])
+}
+```
+
+While USD exchange rate seems to have many data points in its right-skewed tail, the annual CPI inflation seems to have a single or small number with a very large value, which may indicate an error or an outlier in the data. We may wish to remove this from the data.  
+
+```{r}
+# ed <- ed[-(which.max(ed$inflation_annual_cpi)), ]
+```
+
+
+### Correlation
+
+```{r}
+library(corrplot)
+(correlations <- cor(ed))
+corrplot(correlations, method="circle")
+```
+
+The variables of interest all have non-negative correlation.
+
+The strongest correlation is between systemic crises and banking crises, as expected. There are moderate correlation between sovereign external and domestic debt defaults (unsurprising), between USD exchange rate and sovereign external debt default (also unsurprising), and between inflation and currency crises (and again).
+
+To increase confidence in our prediction of systemic crises, it may be useful to remove a predictor variable from each pair. We could remove sovereign external debt default or we could remove both domestic debt default and USD exchange rate. We can also remove currency crises since inflation crises are more strongly correlated with systemic crises than are currency crises, though both are weakly correlated with systemic crises.
+
+In addition, banking crises are weakly correlated with both external and domestic debt defaults as well as inflation crises. Since banking crisis is strongly correlated with systemic crises, perhaps most of the information we would get from the default and crises data may already be contained in banking crisis.
+
+### Scatterplot
+
+```{r}
+pairs(ed, col=ed$systemic_crisis)
+```
+
+It is difficult to make out much from this visualization.
+
+```{r}
+plt <- ggplot(data = ed, mapping = aes(y = systemic_crisis))
 
 plt +
-#  geom_point(mapping = aes(x = banking_crisis))
-  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
+  geom_jitter(mapping = aes(x = banking_crisis), width = .25, height = .25)
+```
 
-(indep_table <- df %>%
+As expected, most of the data is not associated with crises, but when they are, banking crises and systemic crises usually occur together.
+
+```{r}
+# install.packages("caret")
+# library(caret)
+# x <- ed[,3:10]
+# y <- ed[,2]
+# scales <- list(x=list(relation="free"), y=list(relation="free"))
+# featurePlot(x=x, y=y, plot="density", scales=scales)
+```
+
+```{r}
+
+(year_table <- ac %>%
+  group_by(country) %>%
+  summarize(first_year = min(year), count = n() ) %>%
+  arrange(first_year) %>%
+  mutate(prop = count/sum(count))
+)
+
+(indep_table <- ac %>%
   filter(independence == 1) %>%
   group_by(country) %>%
   summarize(indep_year = min(year), count = n() ) %>%
@@ -294,7 +360,7 @@ plt +
   mutate(prop = count/sum(count))
 )
 
-(sys_crisis_table <- df %>%
+(sys_crisis_table <- ac %>%
   filter(systemic_crisis == 1) %>%
   group_by(country) %>%
   summarize(earliest_sys_crisis = min(year), count = n() ) %>%
@@ -302,21 +368,26 @@ plt +
   mutate(prop = count/sum(count))
 )
 
-# Add date of independence
+plt1 <- ggplot(data = filter(ac, systemic_crisis == TRUE))
+
+plt1 +
+  geom_jitter(mapping = aes(x = year, y = country),
+             color = "blue", alpha = .75, width = .1, height = .1) +
+  geom_jitter(data = indep_table,
+             mapping = aes(x = indep_year, y = country),
+             color = "black", alpha = .75, width = .1, height = .1) +
+  geom_jitter(data = year_table,
+             mapping = aes(x = first_year, y = country),
+             color = "red", alpha = .75, width = .1, height = .1)
+
+# Add banking crises and other explanatory variables of interest
 ```
+
+The leftmost red points indicate the first year of the data. The black points represent the first year of independence. The blue points indicate occurrences of systemic crises.
 
 Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
 
 Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
-
-Combine independence and systemic crises into one plot. Identify marker for ind per country on its own line and then its systemic crises. Is systemic crisis associated with xxx? Demonstrate simple relationships with scatter plots and regression. That indicates hypothesis and additional variables to collect/create.Break out by countries.
-
-```{r}
-plt <- ggplot(data = ac, mapping = aes(y = systemic_crisis)) 
-
-plt +
-  geom_jitter(mapping = aes(x = banking_crisis, y = systemic_crisis), width = .25, height = .25)
-```
 
 # Preliminary model investigation
 
@@ -337,7 +408,7 @@ The probability distribution for an observation is simply the probability mass f
 
 distr_i <- function(B0, B1, X, Y) {
   probs <- pi_i(B0, B1, X)
-  return ( probs^Y * (1-probs)^(1-Y) ) 
+  return ( probs^Y * (1-probs)^(1-Y) )
 }
 
 likelihood <- function(B0, B1, X, Y) {
@@ -363,7 +434,7 @@ ll_helper <- function(params) {
 }
 ```
 
-Obtain point estimates of the coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood of the data. 
+Obtain point estimates of the coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood of the data.
 
 ```{r}
 
@@ -416,7 +487,7 @@ paste("False positives",
   sum(glm_preds & !(glm_correct))
 )
 ```
-The default method "glm.fit" uses iteratively reweighted least squares (IWLS). 
+The default method "glm.fit" uses iteratively reweighted least squares (IWLS).
 
 ## Compare likelihood from custom SLR vs. built-in GLM
 
@@ -430,7 +501,7 @@ The optimization procedure provides us with point estimates, but we have no meas
 
 ## Bootstrap confidence intervals
 
-Construct a bootstrap sample for the estimated coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood. 
+Construct a bootstrap sample for the estimated coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood.
 
 ```{r}
 n <- nrow(Y)
@@ -549,7 +620,3 @@ glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
 
 print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 ```
-
-
-
-
