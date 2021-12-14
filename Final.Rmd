@@ -462,16 +462,16 @@ names(ac)
 ```
 
 ```{r}
-# Exploratory Data (ed) set
-ed_orig <- ac %>%
+# Exploratory Data Sets
+ac_eda <- ac %>%
 
   select(c(cc3, country, year, case, systemic_crisis, banking_crisis, currency_crises, inflation_crises, independence, domestic_debt_in_default, sovereign_external_debt_default, inflation_annual_cpi, exch_usd)) %>%
 
   mutate_at(
     vars(systemic_crisis, banking_crisis, currency_crises, inflation_crises, independence, domestic_debt_in_default, sovereign_external_debt_default),
-    as.integer) %>%
+    as.integer)
 
-  data.frame()
+ed_orig <- data.frame(ac_eda)
 
 ed <- ed_orig[ , -c(1:3) ]
 ```
@@ -657,8 +657,8 @@ Obtain point estimates of the coefficients of a simple logistic regression where
 
 ```{r}
 
-X = ac$systemic_crisis
-Y = ac$banking_crisis
+X = ac$banking_crisis
+Y = ac$systemic_crisis
 params <- c(0, 0)
 (best <- optim(par = params, fn = ll_helper))
 
@@ -678,18 +678,25 @@ paste("Correctly predicted",
 )
 paste("False positives",
   sum(preds & !(correct))
-
 )
+paste("Cutoff value", cutoff)
 ```
 
 ### Compare to built-in function for Logistic Regression as a family of the Generalized Linear Model
 
 ```{r}
+
+X = ac$banking_crisis
+Y = ac$systemic_crisis
+glm_df <- data.frame(Y, X)
+
 glm_fit = glm(formula = Y ~ X, family = binomial(link = "logit"))
 
-glm_probs <- predict(glm_fit, newdata = data.frame(Y, X), type = "response")
+glm_probs <- predict(glm_fit, newdata = glm_df, type = "response")
 
-glm_preds <- ifelse(glm_probs > mean(unique(glm_probs)), TRUE, FALSE)
+glm_cutoff <- mean(unique(glm_probs))
+
+glm_preds <- ifelse(glm_probs > glm_cutoff, TRUE, FALSE)
 
 glm_correct <- glm_preds == Y
 
@@ -705,6 +712,7 @@ paste("Correctly predicted",
 paste("False positives",
   sum(glm_preds & !(glm_correct))
 )
+paste("Cutoff value", glm_cutoff)
 ```
 The default method "glm.fit" uses iteratively reweighted least squares (IWLS).
 
@@ -723,8 +731,8 @@ The optimization procedure provides us with point estimates, but we have no meas
 Construct a bootstrap sample for the estimated coefficients of a simple logistic regression where the fitting is based on maximizing the log-likelihood.
 
 ```{r}
-X = ac$systemic_crisis
-Y = ac$banking_crisis
+X = ac$banking_crisis
+Y = ac$systemic_crisis
 n <- length(Y)
 M <- 1e3
 b_params <- c(0, 0)
@@ -797,6 +805,80 @@ ggplot(data.frame(x = b1)) +
 
 
 ## Multiple Logistic Regression (MLR) Model
+
+### Multiple Logistic Regression of Systemic Crisis On All Predictors
+
+```{r}
+names(ac_eda)
+```
+
+```{r}
+resp <- ac_eda$systemic_crisis
+
+mlr_fit = glm(
+  formula = systemic_crisis ~ 
+    banking_crisis +
+    currency_crises +
+    inflation_crises +
+    independence +
+    domestic_debt_in_default +
+    sovereign_external_debt_default +
+    inflation_annual_cpi,
+  data = ac_eda, 
+  family = binomial(link = "logit")
+)
+
+mlr_probs <- predict(mlr_fit, newdata = ac_eda, type = "response")
+
+# We are interested in maximizing the accuracy of predicting systemic crises.
+calc_sensitivity <- function(cutoff) {
+  mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+  mlr_correct <- mlr_preds == resp
+  sensitivity <- mean(mlr_preds[resp==1] == resp[resp==1])
+  return(sensitivity)
+}
+
+mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+
+mlr_correct <- mlr_preds == resp
+
+sensitivity_fit <- optim(.75, calc_sensitivity, method = "Brent", lower = 0, upper = 1)
+
+cutoff <- sensitivity_fit$par
+
+paste("Training Accuracy", mean(mlr_correct))
+paste("Sensitivity", mean(mlr_preds[resp==1] == resp[resp==1]))
+paste("Sensitivity", mean(mlr_preds[resp==0] == resp[resp==0]))
+paste("Correctly predicted",
+  sum(mlr_preds & mlr_correct),
+  "of",
+  sum(resp),
+  "crises"
+)
+paste("False positives",
+  sum(mlr_preds & !(mlr_correct))
+)
+paste("Cutoff value", cutoff)
+```
+
+### Compare results of simple logistic regression to multiple logistic regression
+
+Systemic Crisis regressed on banking crisis alone
+[1] "Training Accuracy 0.977337110481586"
+[1] "Sensitivity 0.926829268292683"
+[1] "Sensitivity 0.98157625383828"
+[1] "Correctly predicted 76 of 82 crises"
+[1] "False positives 18"
+[1] "Cutoff value 0.407364127782024"
+
+Systemic Crisis regressed on all predictors
+[1] "Training Accuracy 0.977337110481586"
+[1] "Sensitivity 0.926829268292683"
+[1] "Sensitivity 0.98157625383828"
+[1] "Correctly predicted 76 of 82 crises"
+[1] "False positives 18"
+[1] "Cutoff value 0.618034012982639"
+
 
 
 ### Multiple Logistic Regression of Banking Crisis on Annual Inflation Indices
