@@ -1,5 +1,5 @@
 ---
-title: "STAT 535 Final Project - Fall 2021"
+title: "Predicting Systemic Crises in African Economies"
 author: 'Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir'
 date: 'Due Date: December 15, 2021, 5:59pm'
 output:
@@ -457,7 +457,7 @@ countries, their average inflation rate increased more than 10% after being inde
 
 ## Data Visualizations
 
-```{r}
+```{r, include=FALSE}
 names(ac)
 ```
 
@@ -478,11 +478,11 @@ ed <- ed_orig[ , -c(1:3) ]
 
 
 
-```{r}
+```{r, include=FALSE}
 head(ed)
 ```
 
-```{r}
+```{r, include=FALSE}
 summary(ed)
 ```
 
@@ -490,7 +490,7 @@ summary(ed)
 
 Visualize spread of the distribution of numeric variables.
 
-```{r}
+```{r, include=FALSE}
 # par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
 for(i in 1:ncol(ed)) {
     hist(ed[,i], main=names(ed)[i])
@@ -503,7 +503,7 @@ Crises and debt default do not happen on most years. Most of the observations ar
 
 Easily identify outliers
 
-```{r}
+```{r, include=FALSE}
 # par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
 for(i in 1:ncol(ed)) {
     boxplot(ed[,i], main=names(ed)[i])
@@ -521,7 +521,7 @@ While USD exchange rate seems to have many data points in its right-skewed tail,
 
 ```{r}
 library(corrplot)
-(correlations <- cor(ed))
+correlations <- cor(ed)
 corrplot(correlations, method="circle")
 ```
 
@@ -535,7 +535,7 @@ In addition, banking crises are weakly correlated with both external and domesti
 
 ### Scatterplot
 
-```{r}
+```{r, include=FALSE}
 pairs(ed, col=ed$systemic_crisis)
 ```
 
@@ -563,28 +563,28 @@ As expected, most of the data is not associated with crises, but when they are, 
 ### 
 ```{r}
 
-(year_table <- ac %>%
+year_table <- ac %>%
   group_by(country) %>%
   summarize(first_year = min(year), count = n() ) %>%
   arrange(first_year) %>%
   mutate(prop = count/sum(count))
-)
 
-(indep_table <- ac %>%
+
+indep_table <- ac %>%
   filter(independence == 1) %>%
   group_by(country) %>%
   summarize(indep_year = min(year), count = n() ) %>%
   arrange(indep_year) %>%
   mutate(prop = count/sum(count))
-)
 
-(sys_crisis_table <- ac %>%
+
+sys_crisis_table <- ac %>%
   filter(systemic_crisis == 1) %>%
   group_by(country) %>%
   summarize(earliest_sys_crisis = min(year), count = n() ) %>%
   arrange(earliest_sys_crisis) %>%
   mutate(prop = count/sum(count))
-)
+
 
 plt1 <- ggplot(data = filter(ac, systemic_crisis == TRUE))
 
@@ -823,7 +823,8 @@ mlr_fit = glm(
     independence +
     domestic_debt_in_default +
     sovereign_external_debt_default +
-    inflation_annual_cpi,
+    inflation_annual_cpi +
+    exch_usd,
   data = ac_eda, 
   family = binomial(link = "logit")
 )
@@ -842,7 +843,7 @@ mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
 
 mlr_correct <- mlr_preds == resp
 
-sensitivity_fit <- optim(.75, calc_sensitivity, method = "Brent", lower = 0, upper = 1)
+sensitivity_fit <- optim(.60, calc_sensitivity, method = "Brent", lower = 0, upper = 1)
 
 cutoff <- sensitivity_fit$par
 
@@ -872,18 +873,21 @@ Systemic Crisis regressed on banking crisis alone
 [1] "Cutoff value 0.407364127782024"
 
 Systemic Crisis regressed on all predictors
-[1] "Training Accuracy 0.977337110481586"
-[1] "Sensitivity 0.926829268292683"
-[1] "Sensitivity 0.98157625383828"
-[1] "Correctly predicted 76 of 82 crises"
-[1] "False positives 18"
-[1] "Cutoff value 0.618034012982639"
+[1] "Training Accuracy 0.975448536355052"
+[1] "Sensitivity 0.817073170731707"
+[1] "Sensitivity 0.988741044012282"
+[1] "Correctly predicted 67 of 82 crises"
+[1] "False positives 11"
+[1] "Cutoff value 0.73940337828769"
 
+```{r}
+sort(exp(mlr_fit$coefficients) - 1, decreasing = TRUE)
+```
 
 
 ### Multiple Logistic Regression of Banking Crisis on Annual Inflation Indices
 
-```{r}
+```{r, include=FALSE}
 ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
 glm.fit = glm(
   formula = banking_crisis ~ inflation_annual_cpi + inflation_annual_epi + inflation_annual_ipi,
@@ -911,7 +915,7 @@ print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 ```
 This approach has a major flaw. Since the absolute inflation index values are dependent on the year, all this is telling us is later years are more likely to be a crises. We can switch to using the relative percent change instead of the aboslute value to make the input data time-series-independent, and performance takes a massive hit.
 
-```{r}
+```{r, include=FALSE}
 glm.fit = glm(
   formula = banking_crisis ~  inflation_change_cpi + inflation_change_epi + inflation_change_ipi,
   family = binomial,
