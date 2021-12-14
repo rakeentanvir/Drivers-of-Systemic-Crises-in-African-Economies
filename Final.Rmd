@@ -19,9 +19,7 @@ library(countrycode)
 library(ggplot2)
 ```
 
-# Data collection
-
-# Data preparation
+# Data collection and preparation
 
 ## Import and transform into tidy data
 
@@ -237,7 +235,227 @@ as_tibble(ac_imf %>% arrange(cc3, year) %>% select(cc3, year, inflation_annual_c
 ```
 
 
-# Exploratory Data Analysis - Data Visualization
+# Exploratory Data Analysis
+
+## Correlation tests and economic interpretation
+
+Defining own correlation test function:
+
+```{r}
+mycorr_test <- function(x,y, name=NULL) {
+  z <- cor.test(x, y, method = "pearson")
+  w <- round(matrix(c(z$estimate, z$p.value), nrow=1, ncol=2), 3)
+  colnames(w) <- c("Corr", "  P Value")
+  rownames(w) <- name
+  return(w)
+}
+```
+
+Forming separate data frames for each country:
+
+
+```{r}
+Algeria_data <- ac_imf %>% filter(country=="Algeria")
+Angola_data <- ac_imf %>% filter(country=="Angola")
+Cent_Afr_Rep_data <- ac_imf %>% filter(country=="Central African Republic")
+Egypt_data <- ac_imf %>% filter(country=="Egypt")
+Iv_Coast_data <- ac_imf %>% filter(country=="Ivory Coast")
+Kenya_data <- ac_imf %>% filter(country=="Kenya")
+Mauritius_data <- ac_imf %>% filter(country=="Mauritius")
+Morocco_data <- ac_imf %>% filter(country=="Morocco")
+Nigeria_data <- ac_imf %>% filter(country=="Nigeria")
+South_Afr_data <- ac_imf %>% filter(country=="South Africa")
+Tunisia_data <- ac_imf %>% filter(country=="Tunisia")
+Zambia_data <- ac_imf %>% filter(country=="Zambia")
+Zimbabwe_data <- ac_imf %>% filter(country=="Zimbabwe")
+```
+
+If we regress occurrence of systemic crisis on other type of economic crisis by using simple lm function, we
+can see that there is strong cause-effect relationship between banking crisis and systemic crisis.
+
+
+```{r}
+regress1 <- lm(systemic_crisis ~ domestic_debt_in_default + sovereign_external_debt_default +
+                 currency_crises + inflation_crises + banking_crisis   , data = ac_imf)
+summary(regress1)
+```
+
+The results show that 80% of the time banking crisis is associated with systemic crisis.
+
+Sovereign debt default is not as strong as banking crisis but it still positively correlated with systemic crisis. According to the some macroeconomic studies on  African countries, it is argued that sovereign debt default is actually outcome of other crisis, and associated with most of the worsening economic conditions in countries.
+
+We can look for the evidence of that argument by running correlation tests between Sovereign debt default and
+other type of crisis.
+
+```{r}
+mycorr_test(as.numeric(ac_imf$sovereign_external_debt_default), as.numeric(ac_imf$banking_crisis), "Sov&Bank")
+mycorr_test(as.numeric(ac_imf$sovereign_external_debt_default), as.numeric(ac_imf$domestic_debt_in_default), "Sov&Dom")
+mycorr_test(as.numeric(ac_imf$sovereign_external_debt_default), as.numeric(ac_imf$inflation_crises), "Sov&Inf")
+```
+
+So in this part, I would like to focus on sovereign debt default and its deriving factors. Thus, considering the available qualitative variables in our data, two variables, export price index and exchange rate could be the deriving factors of sovereign debt default because these countries' economies heavily depend on their export revenues. For that purpose we run correlation test for the entire data set first:
+
+```{r}
+mycorr_test(ac_imf$exch_usd, as.numeric(ac_imf$sovereign_external_debt_default), "Exch&Sov")
+mycorr_test(ac_imf$inflation_annual_epi, as.numeric(ac_imf$sovereign_external_debt_default), "Inf&Sov")
+```
+
+Correlation tests on entire data set suggest that there is significant positive correlation between exchange
+rate and sovereign debt default, that is, increasing USD exchange rate is correlated with occurrence of
+sovereign debt default
+On the other hand, there is also significant negative correlation between export price index and
+sovereign debt default but not so big.
+
+At the next step, we perform the correlation tests for each of 13 countries separately to explore which of
+exchange rate and export price index is more explanatory factor for sovereign debt defaults.
+
+
+```{r}
+
+mycorr_test(Algeria_data$exch_usd, as.numeric(Algeria_data$sovereign_external_debt_default), "Algeria_Exch&Sov")
+mycorr_test(Algeria_data$inflation_annual_epi, as.numeric(Algeria_data$sovereign_external_debt_default), "Alger_Inf&Sov")
+
+mycorr_test(Angola_data$exch_usd, as.numeric(Angola_data$sovereign_external_debt_default), "Angola_Exch&Sov")
+mycorr_test(Angola_data$inflation_annual_epi, as.numeric(Angola_data$sovereign_external_debt_default), "Angola_Inf&Sov")
+
+mycorr_test(Cent_Afr_Rep_data$exch_usd, as.numeric(Cent_Afr_Rep_data$sovereign_external_debt_default), "C.Afr.R_Exch&Sov")
+mycorr_test(Cent_Afr_Rep_data$inflation_annual_epi, as.numeric(Cent_Afr_Rep_data$sovereign_external_debt_default), "C.Afr.R_Inf&Sov")
+
+mycorr_test(Egypt_data$exch_usd, as.numeric(Egypt_data$sovereign_external_debt_default), "Egypt_Exch&Sov")
+mycorr_test(Egypt_data$inflation_annual_epi, as.numeric(Egypt_data$sovereign_external_debt_default), "Egypt_Inf&Sov")
+
+mycorr_test(Iv_Coast_data$exch_usd, as.numeric(Iv_Coast_data$sovereign_external_debt_default), "I.Coast_Exch&Sov")
+mycorr_test(Iv_Coast_data$inflation_annual_epi, as.numeric(Iv_Coast_data$sovereign_external_debt_default), "I.Coast_Inf&Sov")
+
+mycorr_test(Kenya_data$exch_usd, as.numeric(Kenya_data$sovereign_external_debt_default), "Kenya_Exch&Sov")
+mycorr_test(Kenya_data$inflation_annual_epi, as.numeric(Kenya_data$sovereign_external_debt_default), "Kenya_Inf&Sov")
+
+mycorr_test(Mauritius_data$exch_usd, as.numeric(Mauritius_data$sovereign_external_debt_default), "Maurit_Exch&Sov")
+mycorr_test(Mauritius_data$inflation_annual_epi, as.numeric(Mauritius_data$sovereign_external_debt_default), "Maurit_Inf&Sov")
+
+mycorr_test(Morocco_data$exch_usd, as.numeric(Morocco_data$sovereign_external_debt_default), "Morocc_Exch&Sov")
+mycorr_test(Morocco_data$inflation_annual_epi, as.numeric(Morocco_data$sovereign_external_debt_default), "Morocc_Inf&Sov")
+
+mycorr_test(Nigeria_data$exch_usd, as.numeric(Nigeria_data$sovereign_external_debt_default), "Nigeria_Exch&Sov")
+mycorr_test(Nigeria_data$inflation_annual_epi, as.numeric(Nigeria_data$sovereign_external_debt_default), "Nigeria_Inf&Sov")
+
+mycorr_test(South_Afr_data$exch_usd, as.numeric(South_Afr_data$sovereign_external_debt_default), "C.Africa_Exch&Sov")
+mycorr_test(South_Afr_data$inflation_annual_epi, as.numeric(South_Afr_data$sovereign_external_debt_default), "C.Africa_Inf&Sov")
+
+mycorr_test(Tunisia_data$exch_usd, as.numeric(Tunisia_data$sovereign_external_debt_default), "Tunisia_Exch&Sov")
+mycorr_test(Tunisia_data$inflation_annual_epi, as.numeric(Tunisia_data$sovereign_external_debt_default), "Tunisia_Inf&Sov")
+
+mycorr_test(Zambia_data$exch_usd, as.numeric(Zambia_data$sovereign_external_debt_default), "Zambia_Exch&Sov")
+mycorr_test(Zambia_data$inflation_annual_epi, as.numeric(Zambia_data$sovereign_external_debt_default), "Zambia_Inf&Sov")
+
+mycorr_test(Zimbabwe_data$exch_usd, as.numeric(Zimbabwe_data$sovereign_external_debt_default), "Zimbabw_Exch&Sov")
+mycorr_test(Zimbabwe_data$inflation_annual_epi, as.numeric(Zimbabwe_data$sovereign_external_debt_default), "Zimbabw_Inf&Sov")
+```
+
+Correlation tests for each country proves that export price index is a better predictor for sovereign debt default for the most of the countries, which makes sense because it is argued in literature that decline in global commodity prices such as oil and petroleum products and precious metal prices in 1980s negatively affected
+trade/external accounts of these countries which led to decrease in government revenues and sovereign debt defaults consequently.
+
+Only for Egypt and Tunisia, export price index is not explanatory for sovereign debt default but there is also
+no significant correlation between exchange rate and  sovereign debt default for these countries.
+Only for Zimbabwe, exchange rate is better predictor than export price index.
+Additionally, since Mauritius have never experienced sovereign debt default correlation test do not work for
+Mauritius.
+
+As mentioned before, sovereign debt default is also related to inflation crisis. We revealed that exchange rate and export price index are main drivers of sovereign debt default. At this point we would like to explore whether they are also correlated with inflation rate or not:
+
+```{r}
+mycorr_test(Algeria_data$inflation_annual_cpi, Algeria_data$exch_usd, "Algeria_Inf&Exch")
+mycorr_test(Algeria_data$inflation_annual_cpi, Algeria_data$inflation_annual_epi, "Algeria_Inf&Epi")
+
+mycorr_test(Angola_data$inflation_annual_cpi, Angola_data$exch_usd, "Angola_Inf&Exch")
+mycorr_test(Angola_data$inflation_annual_cpi, Angola_data$inflation_annual_epi, "Angola_Inf&Epi")
+
+mycorr_test(Cent_Afr_Rep_data$inflation_annual_cpi, Cent_Afr_Rep_data$exch_usd, "C.Arf.R_Inf&Exch")
+mycorr_test(Cent_Afr_Rep_data$inflation_annual_cpi, Cent_Afr_Rep_data$inflation_annual_epi, "C.Arf.R_Inf&Epi")
+
+mycorr_test(Egypt_data$inflation_annual_cpi, Egypt_data$exch_usd, "Egypt_Inf&Exch")
+mycorr_test(Egypt_data$inflation_annual_cpi, Egypt_data$inflation_annual_epi, "Egypt_Inf&Epi")
+
+mycorr_test(Iv_Coast_data$inflation_annual_cpi, Iv_Coast_data$exch_usd, "I.Coast_Inf&Exch")
+mycorr_test(Iv_Coast_data$inflation_annual_cpi, Iv_Coast_data$inflation_annual_epi, "I.Coast_Inf&Epi")
+
+mycorr_test(Kenya_data$inflation_annual_cpi, Kenya_data$exch_usd, "Kenya_Inf&Exch")
+mycorr_test(Kenya_data$inflation_annual_cpi, Kenya_data$inflation_annual_epi, "Kenya_Inf&Epi")
+
+mycorr_test(Mauritius_data$inflation_annual_cpi, Mauritius_data$exch_usd, "Maurit_Inf&Exch")
+mycorr_test(Mauritius_data$inflation_annual_cpi, Mauritius_data$inflation_annual_epi, "Maurit_Inf&Epi")
+
+mycorr_test(Morocco_data$inflation_annual_cpi, Morocco_data$exch_usd, "Morocc_Inf&Exch")
+mycorr_test(Morocco_data$inflation_annual_cpi, Morocco_data$inflation_annual_epi, "Morocc_Inf&Epi")
+
+mycorr_test(Nigeria_data$inflation_annual_cpi, Nigeria_data$exch_usd, "Nigeria_Inf&Exch")
+mycorr_test(Nigeria_data$inflation_annual_cpi, Nigeria_data$inflation_annual_epi, "Nigeria_Inf&Epi")
+
+mycorr_test(South_Afr_data$inflation_annual_cpi, South_Afr_data$exch_usd, "S.Africa_Inf&Exch")
+mycorr_test(South_Afr_data$inflation_annual_cpi, South_Afr_data$inflation_annual_epi, "S.Africa_Inf&Epi")
+
+mycorr_test(Tunisia_data$inflation_annual_cpi, Tunisia_data$exch_usd, "Tunisia_Inf&Exch")
+mycorr_test(Tunisia_data$inflation_annual_cpi, Tunisia_data$inflation_annual_epi, "Tunisia_Inf&Epi")
+
+mycorr_test(Zambia_data$inflation_annual_cpi, Zambia_data$exch_usd, "Zambia_Inf&Exch")
+mycorr_test(Zambia_data$inflation_annual_cpi, Zambia_data$inflation_annual_epi, "Zambia_Inf&Epi")
+
+mycorr_test(Zimbabwe_data$inflation_annual_cpi, Zimbabwe_data$exch_usd, "Zimbabw_Inf&Exch")
+mycorr_test(Zimbabwe_data$inflation_annual_cpi, Zimbabwe_data$inflation_annual_epi, "Zimbabw_Inf&Epi")
+```
+
+We found that for some countries there is significant correlation between exchange rate and inflation rate
+and for some other countries there is correlation between export price index and inflation.
+Especially for some countries such as Algeria, Angola, Zambia, the negative correlation between
+export price index and inflation can be seen easily by visual inspection:
+
+```{r}
+ac_imf %>% filter(country=="Angola") %>% ggplot(aes(x=inflation_annual_cpi, y=inflation_annual_epi)) + 
+  geom_point()
+
+ac_imf %>% filter(country=="Algeria") %>% ggplot(aes(x=inflation_annual_cpi, y=inflation_annual_epi)) + 
+  geom_point()
+
+ac_imf %>% filter(country=="Zambia") %>% ggplot(aes(x=inflation_annual_cpi, y=inflation_annual_epi)) + 
+  geom_point()
+```
+
+Next step is to do regression analysis for these 3 qualitative variables: inflation rate, export price index
+and exchange rate by using fixed effect model to be able to control country specific factors, that is, we
+assume  each country has its own intercept value for the average level of inflation rate:
+
+
+```{r}
+regress2 <- lm(inflation_annual_cpi ~ exch_usd + inflation_annual_epi + factor(country) - 1, data = ac_imf)
+summary(regress2)
+```
+
+However, we do not get any significant coefficient estimate with a fixed-effect model. 
+
+Furthermore we know that banking and systemic crisis in these 13 countries overwhelmingly took place after
+their independency.Also we explored that there is strong correlation between exchange rate and inflation for
+most of the countries in the data set. In this context another question  we would like to answer is whether
+the becoming independent triggered higher inflation rates or not. 
+
+Most of these countries became independent mid 1960s.
+To investigate the answer of this question we set about 20 years of control period of time. Thus, we run the
+regression on the data after 1945. Additionally, since there is a lot of  fluctuation in inflation rate
+after the mid 1980s, we limited the data until 1985. By this way we set  20 years of control period of
+time and 20 years of treatment period of time, in terms of being independent:
+
+```{r}
+indep_sample <- ac %>% filter(year > "1945-01-01", year < "1985-01-01", inflation_annual_cpi !=0, exch_usd !=0)
+indep_sample$independence <- as.numeric(indep_sample$independence)
+
+regress3 <- lm(inflation_annual_cpi ~  exch_usd + independence + factor(country) -1, data = indep_sample)
+summary(regress3)
+```
+
+The regression result suggests that most of the countries experienced rise in their inflation rates
+after becoming independent, 2.8% on average. Algeria, Angola, and Nigeria are the most negatively affected
+countries, their average inflation rate increased more than 10% after being independent.
+
+## Data Visualizations
 
 ```{r}
 names(ac)
@@ -268,7 +486,7 @@ head(ed)
 summary(ed)
 ```
 
-## Histograms
+### Histograms
 
 Visualize spread of the distribution of numeric variables.
 
@@ -281,7 +499,7 @@ for(i in 1:ncol(ed)) {
 
 Crises and debt default do not happen on most years. Most of the observations are associated with years of independence. The exchange rate to USD and annual CPI inflation are highly right-skewed with very outlier values. These may have something to do with the crises and debt defaults.
 
-## Box and Whisker
+### Box and Whisker
 
 Easily identify outliers
 
@@ -299,7 +517,7 @@ While USD exchange rate seems to have many data points in its right-skewed tail,
 ```
 
 
-## Correlation
+### Correlation
 
 ```{r}
 library(corrplot)
@@ -315,7 +533,7 @@ To increase confidence in our prediction of systemic crises, it may be useful to
 
 In addition, banking crises are weakly correlated with both external and domestic debt defaults as well as inflation crises. Since banking crisis is strongly correlated with systemic crises, perhaps most of the information we would get from the default and crises data may already be contained in banking crisis.
 
-## Scatterplot
+### Scatterplot
 
 ```{r}
 pairs(ed, col=ed$systemic_crisis)
@@ -464,7 +682,7 @@ paste("False positives",
 )
 ```
 
-## Compare to built-in function for Logistic Regression as a family of the Generalized Linear Model
+### Compare to built-in function for Logistic Regression as a family of the Generalized Linear Model
 
 ```{r}
 glm_fit = glm(formula = Y ~ X, family = binomial(link = "logit"))
@@ -490,7 +708,7 @@ paste("False positives",
 ```
 The default method "glm.fit" uses iteratively reweighted least squares (IWLS).
 
-## Compare likelihood from custom SLR vs. built-in GLM
+### Compare likelihood from custom SLR vs. built-in GLM
 
 ```{r}
 (slr_ll <- log_likelihood(best$par[1], best$par[2], X, Y))
@@ -530,7 +748,7 @@ for (m in 1:M) {
 ```
 
 
-## Estimate the standard deviations of each of the coefficients.
+### Estimate the standard deviations of each of the coefficients.
 
 ```{r}
 b0_summary <- summary(b0)
@@ -547,7 +765,7 @@ sd(b1)
 ```
 
 
-## Construct 95% confidence intervals for the coefficients and, based on those, determine whether or not we can reject a null hypothesis that each of them is equal to zero.
+### Construct 95% confidence intervals for the coefficients and, based on those, determine whether or not we can reject a null hypothesis that each of them is equal to zero.
 
 ```{r}
 alpha <- .05
@@ -581,7 +799,7 @@ ggplot(data.frame(x = b1)) +
 ## Multiple Logistic Regression (MLR) Model
 
 
-## Multiple Logistic Regression of Banking Crisis on Annual Inflation Indices
+### Multiple Logistic Regression of Banking Crisis on Annual Inflation Indices
 
 ```{r}
 ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
