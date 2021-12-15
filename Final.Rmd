@@ -814,9 +814,34 @@ ggplot(data.frame(x = b1)) +
 
 ## Multiple Logistic Regression (MLR) Model
 
-### Multiple Logistic Regression of Systemic Crisis On All Predictors
+### Optimization helper functions
+
+Let's create some functions to help us optimize on different values for the cutoff value that determines how probabilities are classified.
 
 ```{r}
+# Let's optimize on a balanced sensitivity and specificity
+calc_balance <- function(cutoff) {
+  mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+  mlr_correct <- mlr_preds == resp
+  training_accuracy <- mean(mlr_correct)
+  sensitivity <- mean(mlr_preds[resp==1] == resp[resp==1])
+  specificity <- mean(mlr_preds[resp==0] == resp[resp==0])
+  return( abs(sensitivity - specificity) ) # which means minimizing the absolute difference between sensitivity and specificity
+}
+
+# We are also interested in maximizing the accuracy of predicting systemic crises, i.e. sensitivity.
+calc_sensitivity <- function(cutoff) {
+  mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+  mlr_correct <- mlr_preds == resp
+  sensitivity <- mean(mlr_preds[resp==1] == resp[resp==1])
+  return(1-sensitivity) # which means minimizing the error rate given TRUE crises (1 - Sensitivity)
+}
+```
+
+
+### Multiple Logistic Regression of Systemic Crisis On All Predictors
+
+```{r, include = FALSE}
 names(ac_eda)
 ```
 
@@ -839,21 +864,11 @@ mlr_fit = glm(
 
 mlr_probs <- predict(mlr_fit, newdata = ac_eda, type = "response")
 
-# We are interested in maximizing the accuracy of predicting systemic crises.
-calc_sensitivity <- function(cutoff) {
-  mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
-  mlr_correct <- mlr_preds == resp
-  sensitivity <- mean(mlr_preds[resp==1] == resp[resp==1])
-  return(sensitivity)
-}
+cutoff <- optim(glm_cutoff, calc_sensitivity, method = "Brent", lower = 0, upper = 1)$par
 
 mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
 
 mlr_correct <- mlr_preds == resp
-
-sensitivity_fit <- optim(.60, calc_sensitivity, method = "Brent", lower = 0, upper = 1)
-
-cutoff <- sensitivity_fit$par
 
 paste("Training Accuracy", mean(mlr_correct))
 paste("Sensitivity", mean(mlr_preds[resp==1] == resp[resp==1]))
@@ -870,44 +885,147 @@ paste("False positives",
 paste("Cutoff value", cutoff)
 ```
 
-### Compare results of simple logistic regression to multiple logistic regression
+These are the same results we achieved from our simple logistic regression model with banking crisis as the sole predictor variable. For parsimony, it seems that we would do just as well to regress on banking crisis alone rather than regress on all other predictor variables. 
 
-Systemic Crisis regressed on banking crisis alone
+So we were curious: What are the differences in effect on systemic crises between banking crisis at the other predictors?
 
-[1] "Training Accuracy 0.977337110481586"
-
-[1] "Sensitivity 0.926829268292683"
-
-[1] "Sensitivity 0.98157625383828"
-
-[1] "Correctly predicted 76 of 82 crises"
-
-[1] "False positives 18"
-
-[1] "Cutoff value 0.407364127782024"
-
-
-Systemic Crisis regressed on all predictors
-
-[1] "Training Accuracy 0.975448536355052"
-
-[1] "Sensitivity 0.817073170731707"
-
-[1] "Sensitivity 0.988741044012282"
-
-[1] "Correctly predicted 67 of 82 crises"
-
-[1] "False positives 11"
-
-[1] "Cutoff value 0.73940337828769"
-
-
-Let's look at the effect of each predictor on systemic crisis.
+Let's look at the percent change that each predictor has on systemic crisis:
 
 ```{r}
-sort(exp(mlr_fit$coefficients) - 1, decreasing = TRUE)
+signif(
+  sort(
+    exp(mlr_fit$coefficients) - 1,
+    decreasing = TRUE), 
+  3)
 ```
 
+What happens if we wish to predict systemic crisis without the aid of data on banking crisis?
+
+### Multiple Logistic Regression of Systemic Crisis on All Predictor Variables Excluding Banking Crisis
+
+We found that maximizing sensitivity leads to a very low sensitivity in the following model, so here we optimize the balance between sensitivity and specificity. 
+
+```{r}
+resp <- ac_eda$systemic_crisis
+
+mlr_fit = glm(
+  formula = systemic_crisis ~ 
+    currency_crises +
+    inflation_crises +
+    independence +
+    domestic_debt_in_default +
+    sovereign_external_debt_default +
+    inflation_annual_cpi +
+    exch_usd,
+  data = ac_eda, 
+  family = binomial(link = "logit")
+)
+
+mlr_probs <- predict(mlr_fit, newdata = ac_eda, type = "response")
+
+cutoff <- optim(glm_cutoff, calc_balance, method = "Brent", lower = 0, upper = 1)$par
+
+mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+
+mlr_correct <- mlr_preds == resp
+
+paste("Training Accuracy", mean(mlr_correct))
+paste("Sensitivity", mean(mlr_preds[resp==1] == resp[resp==1]))
+paste("Specificity", mean(mlr_preds[resp==0] == resp[resp==0]))
+paste("Correctly predicted",
+  sum(mlr_preds & mlr_correct),
+  "of",
+  sum(resp),
+  "crises"
+)
+paste("False positives",
+  sum(mlr_preds & !(mlr_correct))
+)
+paste("Cutoff value", cutoff)
+```
+
+Our model had between .75 and .8 training accuracy, sensitivity, and specificity. Though we were able to predict 63 out of 82 crises, we also had 208 false positives, and that magnitude is troubling. 
+
+Let's look at the percent change that each predictor has on the probability of a systemic crisis, given the values of the other predictor variables are held fixed:
+
+```{r}
+signif(
+  sort(
+    exp(mlr_fit$coefficients) - 1,
+    decreasing = TRUE), 
+  3)
+```
+
+The largest effect here is from independence, which increases the probability of systemic crisis by almost 11%. For inflation crises, the increase is about 3%, and for sovereign external debt default, the increase is about 1%. 
+
+But perhaps we only want to predict on future data, which means all the countries would be independent. Then independence is not an important predictor. We included it earlier as a control variable, but how does the regression differ when we only focus on data following independence, removing the need for a predictor variable for independence?
+
+### Multiple Logistic Regression of Systemic Crisis on All Predictor Variables Excluding Banking Crisis and Independence
+
+```{r}
+
+ac_eda <- filter(ac, independence == 1)
+
+resp <- ac_eda$systemic_crisis
+
+mlr_fit = glm(
+  formula = systemic_crisis ~ 
+    currency_crises +
+    inflation_crises +
+    domestic_debt_in_default +
+    sovereign_external_debt_default +
+    inflation_annual_cpi +
+    exch_usd,
+  data = ac_eda, 
+  family = binomial(link = "logit")
+)
+
+mlr_probs <- predict(mlr_fit, newdata = ac_eda, type = "response")
+
+# Let's optimize on a balanced sensitivity and specificity this time
+calc_balance <- function(cutoff) {
+  mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+  mlr_correct <- mlr_preds == resp
+  training_accuracy <- mean(mlr_correct)
+  sensitivity <- mean(mlr_preds[resp==1] == resp[resp==1])
+  specificity <- mean(mlr_preds[resp==0] == resp[resp==0])
+  return( abs(sensitivity - specificity) ) # which means minimizing the absolute difference between sensitivity and specificity
+}
+
+cutoff <- optim(glm_cutoff, calc_balance, method = "Brent", lower = 0, upper = 1)$par
+
+mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
+
+mlr_correct <- mlr_preds == resp
+
+paste("Training Accuracy", mean(mlr_correct))
+paste("Sensitivity", mean(mlr_preds[resp==1] == resp[resp==1]))
+paste("Specificity", mean(mlr_preds[resp==0] == resp[resp==0]))
+paste("Correctly predicted",
+  sum(mlr_preds & mlr_correct),
+  "of",
+  sum(resp),
+  "crises"
+)
+paste("False positives",
+  sum(mlr_preds & !(mlr_correct))
+)
+paste("Cutoff value", cutoff)
+```
+
+Now, our model had between .73 and .75 training accuracy, sensitivity, and specificity, so it has worse prediction accuracy without the predictor variable for independence included in the data and the model, which makes sense given that our previous scatterplot demonstrated that most systemic crises were associated with independence. Overall, the model still performs poorly in terms of prediction accuracy. 
+
+Let's look at the percent change that each predictor has on the probability of a systemic crisis:
+
+```{r}
+signif(
+  sort(
+    exp(mlr_fit$coefficients) - 1,
+    decreasing = TRUE), 
+  3)
+```
+
+The largest effects here are from inflation crises and sovereign external debt default, which increase the probability of systemic crises by about 2.94% and 1.02%, respectively, all other variables held fixed, with independence and banking crisis excluded from the model entirely.
 
 ```{r, include=FALSE}
 ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
@@ -950,3 +1068,7 @@ glm.pred <- ifelse(glm.probs > 0.5, TRUE, FALSE)
 
 print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 ```
+
+# Conclusions
+
+1. 
