@@ -459,7 +459,7 @@ The regression result suggests that most of the countries experienced rise in th
 after becoming independent, 2.8% on average. Algeria, Angola, and Nigeria are the most negatively affected
 countries, their average inflation rate increased more than 10% after being independent.
 
-## Data Visualizations
+# Data Visualizations
 
 ```{r, include=FALSE}
 names(ac)
@@ -490,38 +490,43 @@ head(ed)
 summary(ed)
 ```
 
-### Histograms
-
-Visualize spread of the distribution of numeric variables.
 
 ```{r, include=FALSE}
+### Histograms
+
+# Visualize spread of the distribution of numeric variables.
+
 # par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
 for(i in 1:ncol(ed)) {
     hist(ed[,i], main=names(ed)[i])
 }
+
+# Crises and debt default do not happen on most years. Most of the observations are associated with years of independence. The exchange rate to USD and annual CPI inflation are highly right-skewed with very outlier values. These may have something to do with the crises and debt defaults.
 ```
 
-Crises and debt default do not happen on most years. Most of the observations are associated with years of independence. The exchange rate to USD and annual CPI inflation are highly right-skewed with very outlier values. These may have something to do with the crises and debt defaults.
+
+```{r, include=FALSE}
 
 ### Box and Whisker
 
-Easily identify outliers
+# Easily identify outliers
 
-```{r, include=FALSE}
 # par(mfrow=c(1,(ncol(ed)-3))) # Error in plot.new() : figure margins too large
 for(i in 1:ncol(ed)) {
     boxplot(ed[,i], main=names(ed)[i])
 }
+
+# While USD exchange rate seems to have many data points in its right-skewed tail, the annual CPI inflation seems to have a single or small number with a very large value, which may indicate an error or an outlier in the data. We may wish to remove this from the data.  
 ```
 
-While USD exchange rate seems to have many data points in its right-skewed tail, the annual CPI inflation seems to have a single or small number with a very large value, which may indicate an error or an outlier in the data. We may wish to remove this from the data.  
+
 
 ```{r}
 # ed <- ed[-(which.max(ed$inflation_annual_cpi)), ]
 ```
 
 
-### Correlation
+## Correlation
 
 ```{r}
 library(corrplot)
@@ -537,13 +542,16 @@ To increase confidence in our prediction of systemic crises, it may be useful to
 
 In addition, banking crises are weakly correlated with both external and domestic debt defaults as well as inflation crises. Since banking crisis is strongly correlated with systemic crises, perhaps most of the information we would get from the default and crises data may already be contained in banking crisis.
 
-### Scatterplot
+
 
 ```{r, include=FALSE}
-pairs(ed, col=ed$systemic_crisis)
-```
 
-It is difficult to make out much from this visualization.
+# ## Scatterplot
+
+pairs(ed, col=ed$systemic_crisis)
+
+# It is difficult to make out much from this visualization.
+```
 
 ```{r}
 plt <- ggplot(data = ed, mapping = aes(y = systemic_crisis))
@@ -564,7 +572,8 @@ As expected, most of the data is not associated with crises, but when they are, 
 ```
 
 
-### 
+## Independence
+
 ```{r}
 
 year_table <- ac %>%
@@ -611,6 +620,7 @@ The leftmost red points indicate the first year of the data. The black points re
 Most countries achieved independence by 1965. The four exceptions are Algeria (1968) and Angola (1975) on the later end and Egypt (1860) and South Africa (1910) on the earlier end. Consequently, Algeria and Angola have less filtered observations for analysis, while Egypt and South Africa alone would make up a large proportion of the data used for analysis. The four countries combined makeup almost about 40% of the data, so let's use the proportion sizes to help us decide how to split the data for training/exploration and validation (query and test).
 
 Only 82 total systemic crises in data, with the earliest occurring in Algeria in 1870 and in Egypt in 1907. Perhaps we should focus on analysis on the more recent period from 1976 and on, which also coincides with the time period when all countries had achieved independence, in order to train the model on data characterized by recent economic conditions under independence.
+
 
 # Preliminary model investigation
 
@@ -673,7 +683,7 @@ correct <- preds == Y
 
 paste("Training Accuracy", mean(correct))
 paste("Sensitivity", mean(preds[Y==1] == Y[Y==1]))
-paste("Sensitivity", mean(preds[Y==0] == Y[Y==0]))
+paste("Specificity", mean(preds[Y==0] == Y[Y==0]))
 paste("Correctly predicted",
   sum(preds & correct),
   "of",
@@ -706,7 +716,7 @@ glm_correct <- glm_preds == Y
 
 paste("Training Accuracy", mean(glm_correct))
 paste("Sensitivity", mean(preds[Y==1] == Y[Y==1]))
-paste("Sensitivity", mean(preds[Y==0] == Y[Y==0]))
+paste("Specificity", mean(preds[Y==0] == Y[Y==0]))
 paste("Correctly predicted",
   sum(glm_preds & glm_correct),
   "of",
@@ -872,7 +882,7 @@ mlr_correct <- mlr_preds == resp
 
 paste("Training Accuracy", mean(mlr_correct))
 paste("Sensitivity", mean(mlr_preds[resp==1] == resp[resp==1]))
-paste("Sensitivity", mean(mlr_preds[resp==0] == resp[resp==0]))
+paste("Specificity", mean(mlr_preds[resp==0] == resp[resp==0]))
 paste("Correctly predicted",
   sum(mlr_preds & mlr_correct),
   "of",
@@ -1071,4 +1081,8 @@ print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
 
 # Conclusions
 
-1. 
+Banking crisis was the most significant predictor of systemic crises. Dependency on export revenue made countries more likely to experience economic crises, in accordance with some economic theory.
+
+However, our model made several assumptions. We distilled economic variables to logical values, which means we lose nuanced information. We did not take into account the time series, which only had year to year data and would not help with prediction on a a different time scale such as week or month. 
+
+For future analysis, we would like to investigate further economic variables with more granularity and perhaps model complexity such as interaction terms and diagnostic/remedial measures to help with model selection. We might also want to do further modeling and prediction with new samples from other countries. 
