@@ -3,11 +3,15 @@ title: "Predicting Systemic Crises in African Economies"
 author: 'Names: Said Arslan, Declan Gray-Mullen, and Rakeen Tanvir'
 date: 'Due Date: December 15, 2021, 5:59pm'
 output:
-  html_document:
+  slidy_presentation: 
     toc: yes
     number_sections: yes
   pdf_document:
     toc: yes
+    number_sections: yes
+  html_document:
+    toc: yes
+    number_sections: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -758,7 +762,7 @@ for (m in 1:M) {
 
 ### Estimate the standard deviations of each of the coefficients.
 
-```{r}
+```{r, include = FALSE}
 b0_summary <- summary(b0)
 b0_samp_var <- sum( (b0 - b0_summary["Mean"])^2 ) / ( length(b0) - 1 )
 (b0_std_dev <- sqrt(b0_samp_var))
@@ -775,12 +779,16 @@ sd(b1)
 
 ### Construct 95% confidence intervals for the coefficients and, based on those, determine whether or not we can reject a null hypothesis that each of them is equal to zero.
 
+Let's conduct a hypothesis test of significance.
+
 ```{r}
 alpha <- .05
 probs <- c(alpha/2, 1 - alpha/2)
 ```
 
-```{r}
+Here are the results and a helpful visualization of the boostrapped distribution of b1, the regression coefficient for banking crisis. 
+
+```{r, include = FALSE}
 ( b0_empirical_bootstrap_CI <- quantile(b0, probs) )
 
 ifelse(b0_empirical_bootstrap_CI[1] < 0 & 0 < b0_empirical_bootstrap_CI[2], "Fail to reject null", "Reject null")
@@ -865,27 +873,41 @@ paste("Cutoff value", cutoff)
 ### Compare results of simple logistic regression to multiple logistic regression
 
 Systemic Crisis regressed on banking crisis alone
+
 [1] "Training Accuracy 0.977337110481586"
+
 [1] "Sensitivity 0.926829268292683"
+
 [1] "Sensitivity 0.98157625383828"
+
 [1] "Correctly predicted 76 of 82 crises"
+
 [1] "False positives 18"
+
 [1] "Cutoff value 0.407364127782024"
 
+
 Systemic Crisis regressed on all predictors
+
 [1] "Training Accuracy 0.975448536355052"
+
 [1] "Sensitivity 0.817073170731707"
+
 [1] "Sensitivity 0.988741044012282"
+
 [1] "Correctly predicted 67 of 82 crises"
+
 [1] "False positives 11"
+
 [1] "Cutoff value 0.73940337828769"
+
+
+Let's look at the effect of each predictor on systemic crisis.
 
 ```{r}
 sort(exp(mlr_fit$coefficients) - 1, decreasing = TRUE)
 ```
 
-
-### Multiple Logistic Regression of Banking Crisis on Annual Inflation Indices
 
 ```{r, include=FALSE}
 ac_imf = ac_imf %>% mutate(banking_crisis=as.factor(banking_crisis))
@@ -912,8 +934,10 @@ print_accuracy_metrics = function(pred, trues){
   return(out)
 }
 print_accuracy_metrics(glm.pred, as.logical(ac_imf$banking_crisis))
+
+# This approach has a major flaw. Since the absolute inflation index values are dependent on the year, all this is telling us is later years are more likely to be a crises. We can switch to using the relative percent change instead of the aboslute value to make the input data time-series-independent, and performance takes a massive hit.
+
 ```
-This approach has a major flaw. Since the absolute inflation index values are dependent on the year, all this is telling us is later years are more likely to be a crises. We can switch to using the relative percent change instead of the aboslute value to make the input data time-series-independent, and performance takes a massive hit.
 
 ```{r, include=FALSE}
 glm.fit = glm(
