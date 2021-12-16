@@ -620,6 +620,8 @@ Only 82 total systemic crises in data, with the earliest occurring in Algeria in
 
 # Preliminary model investigation
 
+Let's build a custom simple logistic regression so we can better understand what the built-in R functions are doing and better interpret their results.
+
 ## Simple Logistic Regression (SLR) Model
 
 The logistic response function:
@@ -726,13 +728,13 @@ paste("Cutoff value", glm_cutoff)
 ```
 The default method "glm.fit" uses iteratively reweighted least squares (IWLS).
 
-### Compare likelihood from custom SLR vs. built-in GLM
-
 ```{r}
 (slr_ll <- log_likelihood(best$par[1], best$par[2], X, Y))
 (glm_ll <- log_likelihood(glm_fit$coefficients[1],    
                           glm_fit$coefficients[2], X, Y) )
 ```
+
+We end up with the same results from the custom and the built-in logistic regression functions, as desired.
 
 The optimization procedure provides us with point estimates, but we have no measure of uncertainty for them: neither a standard deviation nor confidence intervals to determine whether or not they are different from 0 with any statistical certainty. The bootstrap method allows us to do so.
 
@@ -792,7 +794,7 @@ alpha <- .05
 probs <- c(alpha/2, 1 - alpha/2)
 ```
 
-Here are the results and a helpful visualization of the boostrapped distribution of b1, the regression coefficient for banking crisis. 
+Here are the results and a helpful visualization of the bootstrapped distribution of b1, the regression coefficient for banking crisis. 
 
 ```{r, include = FALSE}
 ( b0_empirical_bootstrap_CI <- quantile(b0, probs) )
@@ -817,15 +819,19 @@ ggplot(data.frame(x = b1)) +
   geom_vline(xintercept = b1_empirical_bootstrap_CI, col = "blue")
 ```
 
+Clearly, zero falls outside our bootstrapped confidence interval, indicating that B1 is significantly different than zero, and that banking crisis is a significant predictor of systemic crisis in our data.
+
 
 ## Multiple Logistic Regression (MLR) Model
+
+Now let's build the multiple logistic regression model using all our predictor variables. 
 
 ### Optimization helper functions
 
 Let's create some functions to help us optimize on different values for the cutoff value that determines how probabilities are classified.
 
 ```{r}
-# Let's optimize on a balanced sensitivity and specificity
+# Let's optimize on a balanced sensitivity (true positives) and specificity (true negatives)
 calc_balance <- function(cutoff) {
   mlr_preds <- ifelse(mlr_probs > cutoff, TRUE, FALSE)
   mlr_correct <- mlr_preds == resp
@@ -905,7 +911,7 @@ signif(
   3)
 ```
 
-What happens if we wish to predict systemic crisis without the aid of data on banking crisis?
+What happens if we wish to predict systemic crisis without the aid of data on banking crisis, as might be the case in a real financial crisis situation?
 
 ### Multiple Logistic Regression of Systemic Crisis on All Predictor Variables Excluding Banking Crisis
 
@@ -950,9 +956,9 @@ paste("False positives",
 paste("Cutoff value", cutoff)
 ```
 
-Our model had between .75 and .8 training accuracy, sensitivity, and specificity. Though we were able to predict 63 out of 82 crises, we also had 208 false positives, and that magnitude is troubling. 
+Our model had between .75 and .8 training accuracy, sensitivity, and specificity. Though we were able to predict 63 out of 82 crises, we also had 208 false positives, and that magnitude is troubling. We have to think hard about how to balance the errors based on the costs of incorrect prediction, whether false positives or false negatives. 
 
-Let's look at the percent change that each predictor has on the probability of a systemic crisis, given the values of the other predictor variables are held fixed:
+Let's look at the effect that each predictor has on the probability of a systemic crisis, given the values of the other predictor variables are held fixed:
 
 ```{r}
 signif(
