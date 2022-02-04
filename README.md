@@ -1,2 +1,1 @@
-# systemic_crises_africa_535_final
- analysis of economic crises in african countries
+Imported and web scraped African economic data for multiple logistic regression model to predict systemic crises
